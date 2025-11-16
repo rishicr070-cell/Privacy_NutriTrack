@@ -1,0 +1,102 @@
+class UserProfile {
+  final String name;
+  final int age;
+  final double height; // in cm
+  final double currentWeight; // in kg
+  final double targetWeight; // in kg
+  final String gender; // male, female, other
+  final String activityLevel; // sedentary, light, moderate, active, very_active
+  final double dailyCalorieGoal;
+  final double dailyProteinGoal;
+  final double dailyCarbsGoal;
+  final double dailyFatGoal;
+  final double dailyWaterGoal; // in ml
+
+  UserProfile({
+    required this.name,
+    required this.age,
+    required this.height,
+    required this.currentWeight,
+    required this.targetWeight,
+    required this.gender,
+    required this.activityLevel,
+    required this.dailyCalorieGoal,
+    required this.dailyProteinGoal,
+    required this.dailyCarbsGoal,
+    required this.dailyFatGoal,
+    required this.dailyWaterGoal,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'age': age,
+      'height': height,
+      'currentWeight': currentWeight,
+      'targetWeight': targetWeight,
+      'gender': gender,
+      'activityLevel': activityLevel,
+      'dailyCalorieGoal': dailyCalorieGoal,
+      'dailyProteinGoal': dailyProteinGoal,
+      'dailyCarbsGoal': dailyCarbsGoal,
+      'dailyFatGoal': dailyFatGoal,
+      'dailyWaterGoal': dailyWaterGoal,
+    };
+  }
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      name: json['name'],
+      age: json['age'],
+      height: json['height'].toDouble(),
+      currentWeight: json['currentWeight'].toDouble(),
+      targetWeight: json['targetWeight'].toDouble(),
+      gender: json['gender'],
+      activityLevel: json['activityLevel'],
+      dailyCalorieGoal: json['dailyCalorieGoal'].toDouble(),
+      dailyProteinGoal: json['dailyProteinGoal'].toDouble(),
+      dailyCarbsGoal: json['dailyCarbsGoal'].toDouble(),
+      dailyFatGoal: json['dailyFatGoal'].toDouble(),
+      dailyWaterGoal: json['dailyWaterGoal'].toDouble(),
+    );
+  }
+
+  UserProfile copyWith({
+    String? name,
+    int? age,
+    double? height,
+    double? currentWeight,
+    double? targetWeight,
+    String? gender,
+    String? activityLevel,
+    double? dailyCalorieGoal,
+    double? dailyProteinGoal,
+    double? dailyCarbsGoal,
+    double? dailyFatGoal,
+    double? dailyWaterGoal,
+  }) {
+    return UserProfile(
+      name: name ?? this.name,
+      age: age ?? this.age,
+      height: height ?? this.height,
+      currentWeight: currentWeight ?? this.currentWeight,
+      targetWeight: targetWeight ?? this.targetWeight,
+      gender: gender ?? this.gender,
+      activityLevel: activityLevel ?? this.activityLevel,
+      dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
+      dailyProteinGoal: dailyProteinGoal ?? this.dailyProteinGoal,
+      dailyCarbsGoal: dailyCarbsGoal ?? this.dailyCarbsGoal,
+      dailyFatGoal: dailyFatGoal ?? this.dailyFatGoal,
+      dailyWaterGoal: dailyWaterGoal ?? this.dailyWaterGoal,
+    );
+  }
+
+  double get bmi => currentWeight / ((height / 100) * (height / 100));
+
+  String get bmiCategory {
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 25) return 'Normal';
+    if (bmi < 30) return 'Overweight';
+    return 'Obese';
+  }
+}

@@ -1,0 +1,28 @@
+import 'package:flutter/material.dart';
+
+class SearchScreen extends StatelessWidget {
+  const SearchScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Search Food'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Search for a food...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            // Placeholder for search results
+          ],
+        ),
+      ),
+    );
+  }
+}
