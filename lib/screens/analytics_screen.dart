@@ -119,8 +119,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.purple.withOpacity(0.1),
-                Colors.blue.withOpacity(0.05),
+                Colors.purple.withAlpha(26),
+                Colors.blue.withAlpha(13),
               ],
             ),
           ),
@@ -214,7 +214,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withAlpha(26),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -224,7 +224,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               title,
               style: TextStyle(
                 fontSize: 13,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
               ),
             ),
             const SizedBox(height: 4),
@@ -240,7 +240,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               subtitle,
               style: TextStyle(
                 fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
               ),
             ),
           ],
@@ -278,7 +278,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.orange.withAlpha(26),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -312,7 +312,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     horizontalInterval: maxCalories / 4,
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.onSurface.withAlpha(26),
                         strokeWidth: 1,
                       );
                     },
@@ -327,7 +327,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                             value.toInt().toString(),
                             style: TextStyle(
                               fontSize: 10,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                              color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
                             ),
                           );
                         },
@@ -352,7 +352,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                               DateFormat('M/d').format(date),
                               style: TextStyle(
                                 fontSize: 10,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
                               ),
                             ),
                           );
@@ -387,7 +387,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       ),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: Colors.orange.withOpacity(0.1),
+                        color: Colors.orange.withAlpha(26),
                       ),
                     ),
                   ],
@@ -452,7 +452,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.onSurface.withAlpha(26),
                         strokeWidth: 1,
                       );
                     },
@@ -467,7 +467,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                             '${value.toInt()}g',
                             style: TextStyle(
                               fontSize: 10,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                              color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
                             ),
                           );
                         },
@@ -492,7 +492,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                               DateFormat('M/d').format(date),
                               style: TextStyle(
                                 fontSize: 10,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
                               ),
                             ),
                           );
@@ -681,14 +681,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             Icon(
               Icons.bar_chart_rounded,
               size: 60,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+              color: Theme.of(context).colorScheme.onSurface.withAlpha(77),
             ),
             const SizedBox(height: 12),
             Text(
               message,
               style: TextStyle(
                 fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
               ),
             ),
           ],

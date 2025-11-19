@@ -55,7 +55,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading food data: $e');
+      // print('Error loading food data: $e');
       setState(() {
         _isLoading = false;
         _isManualEntry = true; // Fallback to manual entry if loading fails
@@ -273,13 +273,13 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            mealTypeInfo['color'].withOpacity(0.2),
-            mealTypeInfo['color'].withOpacity(0.1),
+            mealTypeInfo['color'].withAlpha(51),
+            mealTypeInfo['color'].withAlpha(26),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: mealTypeInfo['color'].withOpacity(0.3),
+          color: mealTypeInfo['color'].withAlpha(77),
           width: 1.5,
         ),
       ),
@@ -405,7 +405,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _getMealTypeColor().withOpacity(0.3)),
+            border: Border.all(color: _getMealTypeColor().withAlpha(77)),
           ),
           child: ListView.separated(
             shrinkWrap: true,
@@ -418,7 +418,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _getMealTypeColor().withOpacity(0.1),
+                    color: _getMealTypeColor().withAlpha(26),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Icons.fastfood, color: _getMealTypeColor(), size: 20),
@@ -431,7 +431,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                   'Per 100g: ${food.calories.toInt()} kcal • P: ${food.protein.toInt()}g C: ${food.carbs.toInt()}g F: ${food.fat.toInt()}g',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                   ),
                 ),
                 trailing: Icon(Icons.arrow_forward_ios, size: 16, color: _getMealTypeColor()),
@@ -455,12 +455,12 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              _getMealTypeColor().withOpacity(0.1),
-              _getMealTypeColor().withOpacity(0.05),
+              _getMealTypeColor().withAlpha(26),
+              _getMealTypeColor().withAlpha(13),
             ],
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _getMealTypeColor().withOpacity(0.3)),
+          border: Border.all(color: _getMealTypeColor().withAlpha(77)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,7 +486,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
               ),
             ),
             const SizedBox(height: 8),
@@ -510,9 +510,9 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withAlpha(26),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withAlpha(77)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -679,7 +679,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: readOnly 
-            ? color.withOpacity(0.05) 
+            ? color.withAlpha(13) 
             : Theme.of(context).cardColor,
       ),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -728,8 +728,8 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
             return ActionChip(
               label: Text(food.name),
               avatar: Icon(Icons.flash_on, size: 16, color: _getMealTypeColor()),
-              backgroundColor: _getMealTypeColor().withOpacity(0.1),
-              side: BorderSide(color: _getMealTypeColor().withOpacity(0.3)),
+              backgroundColor: _getMealTypeColor().withAlpha(26),
+              side: BorderSide(color: _getMealTypeColor().withAlpha(77)),
               onPressed: () => _selectFood(food),
             );
           }).toList(),

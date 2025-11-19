@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/user_profile.dart';
 import '../utils/storage_helper.dart';
 import 'edit_profile_screen.dart';
+import 'health_conditions_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,6 +18,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   UserProfile? _userProfile;
   Map<String, double> _weightData = {};
   bool _isLoading = true;
+  bool _isDarkMode = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -31,9 +33,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     setState(() => _isLoading = true);
     final profile = await StorageHelper.getUserProfile();
     final weightData = await StorageHelper.getWeightData();
+    final isDark = await StorageHelper.isDarkMode();
     setState(() {
       _userProfile = profile;
       _weightData = weightData;
+      _isDarkMode = isDark;
       _isLoading = false;
     });
   }
@@ -51,12 +55,40 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  Future<void> _navigateToHealthConditions() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HealthConditionsScreen(profile: _userProfile),
+      ),
+    );
+
+    if (result == true) {
+      _loadData();
+    }
+  }
+
+  Future<void> _toggleDarkMode(bool value) async {
+    setState(() => _isDarkMode = value);
+    await StorageHelper.setDarkMode(value);
+    
+    // Force app to rebuild with new theme
+    if (mounted) {
+      // Find the root app and trigger rebuild
+      final appState = context.findAncestorStateOfType<State<MaterialApp>>();
+      if (appState != null && appState.mounted) {
+        (appState as dynamic).setState(() {});
+      }
+    }
+  }
+
   Future<void> _showWeightDialog() async {
     final controller = TextEditingController();
     
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Log Weight'),
         content: TextField(
           controller: controller,
@@ -101,6 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Clear All Data'),
         content: const Text(
           'Are you sure you want to delete all your data? This action cannot be undone.',
@@ -159,6 +192,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                               _buildWeightChart(),
                               const SizedBox(height: 24),
                               _buildGoalsCard(),
+                              const SizedBox(height: 24),
+                              _buildHealthSection(),
                               const SizedBox(height: 24),
                               _buildSettingsSection(),
                               const SizedBox(height: 100),
@@ -665,6 +700,51 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  Widget _buildHealthSection() {
+    final hasConditions = _userProfile!.healthConditions.isNotEmpty;
+    final hasAllergies = _userProfile!.allergies.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Health',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          elevation: 0,
+          child: Column(
+            children: [
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.medical_services, color: Colors.red),
+                ),
+                title: const Text('Health Conditions & Allergies'),
+                subtitle: Text(
+                  hasConditions || hasAllergies
+                      ? '${_userProfile!.healthConditions.length} conditions, ${_userProfile!.allergies.length} allergies'
+                      : 'Set up personalized health alerts',
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: _navigateToHealthConditions,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSettingsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -682,6 +762,30 @@ class _ProfileScreenState extends State<ProfileScreen>
           elevation: 0,
           child: Column(
             children: [
+              SwitchListTile(
+                secondary: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _isDarkMode ? Colors.orange : const Color(0xFF00C9FF),
+                        _isDarkMode ? Colors.amber : const Color(0xFF92FE9D),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    _isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                    color: Colors.white,
+                  ),
+                ),
+                title: const Text('Dark Mode'),
+                subtitle: Text(_isDarkMode ? 'Enabled' : 'Disabled'),
+                value: _isDarkMode,
+                onChanged: _toggleDarkMode,
+                activeColor: const Color(0xFF00C9FF),
+              ),
+              const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: const Text('Clear All Data'),

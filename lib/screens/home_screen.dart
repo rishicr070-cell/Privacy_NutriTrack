@@ -115,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                   Text(
                     'Loading your nutrition...',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                     ),
                   ),
                 ],
@@ -188,8 +188,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF00C9FF).withOpacity(0.15),
-                const Color(0xFF92FE9D).withOpacity(0.08),
+                const Color(0xFF00C9FF).withAlpha(38),
+                const Color(0xFF92FE9D).withAlpha(20),
               ],
             ),
           ),
@@ -215,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF00C9FF).withOpacity(0.4),
+                            color: const Color(0xFF00C9FF).withAlpha(102),
                             blurRadius: 12,
                             offset: const Offset(0, 6),
                           ),
@@ -250,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                            color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -319,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF00C9FF).withOpacity(0.4),
+                color: const Color(0xFF00C9FF).withAlpha(102),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -351,7 +351,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                               ? 'You\'ve logged ${_totalCalories.toInt()} calories today'
                               : 'Start tracking your nutrition',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withAlpha(230),
                             fontSize: 15,
                           ),
                         ),
@@ -361,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withAlpha(51),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -380,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                 child: LinearProgressIndicator(
                   value: value,
                   minHeight: 8,
-                  backgroundColor: Colors.white.withOpacity(0.3),
+                  backgroundColor: Colors.white.withAlpha(77),
                   valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               ),
@@ -399,7 +399,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                   Text(
                     '${calorieGoal.toInt()} kcal goal',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withAlpha(230),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -429,9 +429,9 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withAlpha(26),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
+        border: Border.all(color: color.withAlpha(77), width: 1),
       ),
       child: Column(
         children: [
@@ -449,7 +449,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
             label,
             style: TextStyle(
               fontSize: 11,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
             ),
           ),
         ],
@@ -474,7 +474,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
             end: Alignment.bottomRight,
             colors: [
               Theme.of(context).cardColor,
-              Theme.of(context).cardColor.withOpacity(0.8),
+              Theme.of(context).cardColor.withAlpha(204),
             ],
           ),
         ),
@@ -514,8 +514,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFF00C9FF).withOpacity(0.2),
-                          const Color(0xFF92FE9D).withOpacity(0.2),
+                          const Color(0xFF00C9FF).withAlpha(51),
+                          const Color(0xFF92FE9D).withAlpha(51),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(20),
@@ -590,7 +590,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
               ),
             ),
           ],
@@ -605,7 +605,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
               child: LinearProgressIndicator(
                 value: value,
                 minHeight: 10,
-                backgroundColor: color.withOpacity(0.2),
+                backgroundColor: color.withAlpha(51),
                 valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             );
@@ -692,7 +692,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00C9FF).withOpacity(0.4),
+            color: const Color(0xFF00C9FF).withAlpha(102),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),

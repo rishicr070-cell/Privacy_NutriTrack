@@ -53,7 +53,7 @@ class NutritionRingChart extends StatelessWidget {
                 'calories',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                 ),
               ),
             ],
@@ -82,7 +82,7 @@ class RingChartPainter extends CustomPainter {
 
     // Draw background circles
     final backgroundPaint = Paint()
-      ..color = Colors.grey.withOpacity(0.1)
+      ..color = Colors.grey.withAlpha(26)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 12
       ..strokeCap = StrokeCap.round;

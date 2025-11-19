@@ -7,7 +7,7 @@ void main() async {
   try {
     await StorageHelper.init();
   } catch (e) {
-    print('Storage init error: $e');
+    // print('Storage init error: $e');
   }
   
   runApp(const MyApp());

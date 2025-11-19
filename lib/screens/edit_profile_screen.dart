@@ -23,6 +23,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String _gender = 'male';
   String _activityLevel = 'moderate';
   
+  // Fixed: Set proper default values within slider ranges
   double _dailyCalorieGoal = 2000;
   double _dailyProteinGoal = 150;
   double _dailyCarbsGoal = 200;
@@ -100,10 +101,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final tdee = bmr * activityMultiplier;
 
     setState(() {
-      _dailyCalorieGoal = tdee.roundToDouble();
-      _dailyProteinGoal = (weight * 2).roundToDouble(); // 2g per kg
-      _dailyCarbsGoal = ((tdee * 0.4) / 4).roundToDouble(); // 40% of calories
-      _dailyFatGoal = ((tdee * 0.3) / 9).roundToDouble(); // 30% of calories
+      _dailyCalorieGoal = tdee.roundToDouble().clamp(1200, 3500);
+      _dailyProteinGoal = (weight * 2).roundToDouble().clamp(50, 300);
+      _dailyCarbsGoal = ((tdee * 0.4) / 4).roundToDouble().clamp(50, 400);
+      _dailyFatGoal = ((tdee * 0.3) / 9).roundToDouble().clamp(20, 150);
     });
   }
 
@@ -122,6 +123,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         dailyCarbsGoal: _dailyCarbsGoal,
         dailyFatGoal: _dailyFatGoal,
         dailyWaterGoal: _dailyWaterGoal,
+        healthConditions: widget.profile?.healthConditions ?? [],
+        allergies: widget.profile?.allergies ?? [],
       );
 
       await StorageHelper.saveUserProfile(profile);
@@ -137,12 +140,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.profile == null ? 'Create Profile' : 'Edit Profile'),
+        backgroundColor: const Color(0xFF00C9FF),
+        foregroundColor: Colors.white,
         actions: [
           TextButton(
             onPressed: _saveProfile,
             child: const Text(
               'Save',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
             ),
           ),
         ],
@@ -382,7 +387,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Widget _buildGenderDropdown() {
     return DropdownButtonFormField<String>(
-      initialValue: _gender,
+      value: _gender,
       decoration: InputDecoration(
         labelText: 'Gender',
         prefixIcon: const Icon(Icons.wc),
@@ -477,6 +482,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     Color color,
     Function(double) onChanged,
   ) {
+    // Ensure value is within range
+    final safeValue = value.clamp(min, max);
+    
     return Card(
       elevation: 0,
       child: Padding(
@@ -504,7 +512,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${value.toInt()} $unit',
+                    '${safeValue.toInt()} $unit',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -523,7 +531,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 overlayColor: color.withOpacity(0.2),
               ),
               child: Slider(
-                value: value,
+                value: safeValue,
                 min: min,
                 max: max,
                 divisions: ((max - min) / 10).round(),

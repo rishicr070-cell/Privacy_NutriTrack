@@ -13,7 +13,7 @@ void main() async {
   try {
     await StorageHelper.init();
   } catch (e) {
-    print('Storage initialization error: $e');
+    // print('Storage initialization error: $e');
   }
   
   SystemChrome.setSystemUIOverlayStyle(
@@ -51,7 +51,7 @@ class _MyAppState extends State<MyApp> {
         });
       }
     } catch (e) {
-      print('Error loading theme preference: $e');
+      // print('Error loading theme preference: $e');
     }
   }
 
@@ -61,7 +61,7 @@ class _MyAppState extends State<MyApp> {
       try {
         StorageHelper.setDarkMode(_isDarkMode);
       } catch (e) {
-        print('Error saving theme preference: $e');
+        // print('Error saving theme preference: $e');
       }
     });
   }
@@ -79,13 +79,14 @@ class _MyAppState extends State<MyApp> {
   }
 
   ThemeData _buildLightTheme() {
-    return ThemeData(
-      useMaterial3: true,
+    final ColorScheme colorScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF6C63FF),
       brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF6C63FF),
-        brightness: Brightness.light,
-      ),
+    );
+    return ThemeData.from(
+      colorScheme: colorScheme,
+      useMaterial3: true,
+    ).copyWith(
       // Removed Google Fonts for web compatibility
       scaffoldBackgroundColor: const Color(0xFFF8F9FA),
       cardTheme: CardThemeData(
@@ -104,20 +105,26 @@ class _MyAppState extends State<MyApp> {
   }
 
   ThemeData _buildDarkTheme() {
-    return ThemeData(
-      useMaterial3: true,
+    final ColorScheme colorScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF6C63FF),
       brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF6C63FF),
-        brightness: Brightness.dark,
-      ),
-      scaffoldBackgroundColor: const Color(0xFF1A1A2E),
+      surface: const Color(0xFF1A1A1A),
+    );
+    return ThemeData.from(
+      colorScheme: colorScheme,
+      useMaterial3: true,
+    ).copyWith(
+      scaffoldBackgroundColor: const Color(0xFF121212),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: const Color(0xFF16213E),
+        color: const Color(0xFF1A1A1A),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
+      ),
+      textTheme: ThemeData.dark().textTheme.apply(
+        bodyColor: Colors.white.withAlpha(222),
+        displayColor: Colors.white.withAlpha(222),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -201,7 +208,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           color: Theme.of(context).cardColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withAlpha(12),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -229,7 +236,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     final isSelected = _selectedIndex == index;
     final color = isSelected
         ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
+        : Theme.of(context).colorScheme.onSurface.withAlpha(128);
 
     return GestureDetector(
       onTap: () => _onItemTapped(index),
@@ -242,7 +249,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         ),
         decoration: BoxDecoration(
           color: isSelected
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+              ? Theme.of(context).colorScheme.primary.withAlpha(26)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),

@@ -81,12 +81,12 @@ class _MealSectionState extends State<MealSection> with SingleTickerProviderStat
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              widget.color.withOpacity(0.05),
-              widget.color.withOpacity(0.02),
+              widget.color.withAlpha(13),
+              widget.color.withAlpha(5),
             ],
           ),
           border: Border.all(
-            color: widget.color.withOpacity(0.2),
+            color: widget.color.withAlpha(51),
             width: 1.5,
           ),
         ),
@@ -105,13 +105,13 @@ class _MealSectionState extends State<MealSection> with SingleTickerProviderStat
                         gradient: LinearGradient(
                           colors: [
                             widget.color,
-                            widget.color.withOpacity(0.7),
+                            widget.color.withAlpha(179),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: widget.color.withOpacity(0.3),
+                            color: widget.color.withAlpha(77),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -139,7 +139,7 @@ class _MealSectionState extends State<MealSection> with SingleTickerProviderStat
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: widget.color.withOpacity(0.2),
+                                    color: widget.color.withAlpha(51),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
@@ -161,7 +161,7 @@ class _MealSectionState extends State<MealSection> with SingleTickerProviderStat
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                               ),
                             ),
                           ],
@@ -172,7 +172,7 @@ class _MealSectionState extends State<MealSection> with SingleTickerProviderStat
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: widget.color.withOpacity(0.15),
+                          color: widget.color.withAlpha(38),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -213,7 +213,7 @@ class _MealSectionState extends State<MealSection> with SingleTickerProviderStat
                         ),
                       ),
                       style: TextButton.styleFrom(
-                        backgroundColor: widget.color.withOpacity(0.1),
+                        backgroundColor: widget.color.withAlpha(26),
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -256,13 +256,13 @@ class _MealSectionState extends State<MealSection> with SingleTickerProviderStat
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: widget.color.withOpacity(0.08),
+              color: widget.color.withAlpha(20),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ],
           border: Border.all(
-            color: widget.color.withOpacity(0.15),
+            color: widget.color.withAlpha(38),
             width: 1,
           ),
         ),
@@ -301,7 +301,7 @@ class _MealSectionState extends State<MealSection> with SingleTickerProviderStat
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: widget.color.withOpacity(0.1),
+                          color: widget.color.withAlpha(26),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -336,7 +336,7 @@ class _MealSectionState extends State<MealSection> with SingleTickerProviderStat
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: widget.color.withOpacity(0.7),
+                    color: widget.color.withAlpha(179),
                   ),
                 ),
               ],
@@ -351,9 +351,9 @@ class _MealSectionState extends State<MealSection> with SingleTickerProviderStat
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withAlpha(26),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
+        border: Border.all(color: color.withAlpha(77), width: 0.5),
       ),
       child: Text(
         '$label:${value}g',

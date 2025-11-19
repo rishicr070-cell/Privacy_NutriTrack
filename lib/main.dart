@@ -7,6 +7,9 @@ import 'package:privacy_first_nutrition_tracking_app/screens/search_screen.dart'
 import 'package:privacy_first_nutrition_tracking_app/screens/analytics_screen.dart';
 import 'package:privacy_first_nutrition_tracking_app/screens/profile_screen.dart';
 
+// Global key to access app state
+final GlobalKey<_MyAppState> appKey = GlobalKey<_MyAppState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -23,7 +26,7 @@ void main() async {
     ),
   );
   
-  runApp(const MyApp());
+  runApp(MyApp(key: appKey));
 }
 
 class MyApp extends StatefulWidget {
@@ -31,6 +34,12 @@ class MyApp extends StatefulWidget {
 
   @override
   State<MyApp> createState() => _MyAppState();
+  
+  // Static method to toggle theme from anywhere
+  static void toggleTheme(BuildContext context) {
+    final state = context.findAncestorStateOfType<_MyAppState>();
+    state?._toggleTheme();
+  }
 }
 
 class _MyAppState extends State<MyApp> {
@@ -49,6 +58,7 @@ class _MyAppState extends State<MyApp> {
         setState(() {
           _isDarkMode = isDark;
         });
+        _updateSystemUI();
       }
     } catch (e) {
       print('Error loading theme preference: $e');
@@ -60,10 +70,22 @@ class _MyAppState extends State<MyApp> {
       _isDarkMode = !_isDarkMode;
       try {
         StorageHelper.setDarkMode(_isDarkMode);
+        _updateSystemUI();
       } catch (e) {
         print('Error saving theme preference: $e');
       }
     });
+  }
+
+  void _updateSystemUI() {
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: _isDarkMode ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: _isDarkMode ? const Color(0xFF1A1A2E) : Colors.white,
+        systemNavigationBarIconBrightness: _isDarkMode ? Brightness.light : Brightness.dark,
+      ),
+    );
   }
 
   @override
@@ -74,7 +96,7 @@ class _MyAppState extends State<MyApp> {
       theme: _buildLightTheme(),
       darkTheme: _buildDarkTheme(),
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: AppShell(onThemeToggle: _toggleTheme, isDarkMode: _isDarkMode),
+      home: const AppShell(),
     );
   }
 
@@ -115,6 +137,8 @@ class _MyAppState extends State<MyApp> {
         brightness: Brightness.dark,
         primary: const Color(0xFF00C9FF),
         secondary: const Color(0xFF92FE9D),
+        surface: const Color(0xFF16213E),
+        background: const Color(0xFF1A1A2E),
       ),
       textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
       scaffoldBackgroundColor: const Color(0xFF1A1A2E),
@@ -129,20 +153,14 @@ class _MyAppState extends State<MyApp> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        foregroundColor: Colors.white,
       ),
     );
   }
 }
 
 class AppShell extends StatefulWidget {
-  final VoidCallback onThemeToggle;
-  final bool isDarkMode;
-
-  const AppShell({
-    super.key,
-    required this.onThemeToggle,
-    required this.isDarkMode,
-  });
+  const AppShell({super.key});
 
   @override
   State<AppShell> createState() => _AppShellState();

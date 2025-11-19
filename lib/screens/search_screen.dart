@@ -180,8 +180,8 @@ class _SearchScreenState extends State<SearchScreen>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.green.withOpacity(0.1),
-                Colors.blue.withOpacity(0.05),
+                Colors.green.withAlpha(26),
+                Colors.blue.withAlpha(13),
               ],
             ),
           ),
@@ -295,14 +295,14 @@ class _SearchScreenState extends State<SearchScreen>
           Icon(
             Icons.search_off,
             size: 80,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+            color: Theme.of(context).colorScheme.onSurface.withAlpha(77),
           ),
           const SizedBox(height: 16),
           Text(
             'No foods found',
             style: TextStyle(
               fontSize: 18,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
             ),
           ),
           const SizedBox(height: 8),
@@ -375,7 +375,7 @@ class _SearchScreenState extends State<SearchScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primary.withAlpha(26),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -403,7 +403,7 @@ class _SearchScreenState extends State<SearchScreen>
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
-                            .withOpacity(0.6),
+                            .withAlpha(153),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -414,7 +414,7 @@ class _SearchScreenState extends State<SearchScreen>
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
-                            .withOpacity(0.5),
+                            .withAlpha(128),
                       ),
                     ),
                   ],

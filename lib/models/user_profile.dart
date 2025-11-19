@@ -11,6 +11,8 @@ class UserProfile {
   final double dailyCarbsGoal;
   final double dailyFatGoal;
   final double dailyWaterGoal; // in ml
+  final List<String> healthConditions; // New field for diseases/conditions
+  final List<String> allergies; // New field for food allergies
 
   UserProfile({
     required this.name,
@@ -25,6 +27,8 @@ class UserProfile {
     required this.dailyCarbsGoal,
     required this.dailyFatGoal,
     required this.dailyWaterGoal,
+    this.healthConditions = const [],
+    this.allergies = const [],
   });
 
   Map<String, dynamic> toJson() {
@@ -41,6 +45,8 @@ class UserProfile {
       'dailyCarbsGoal': dailyCarbsGoal,
       'dailyFatGoal': dailyFatGoal,
       'dailyWaterGoal': dailyWaterGoal,
+      'healthConditions': healthConditions,
+      'allergies': allergies,
     };
   }
 
@@ -58,6 +64,12 @@ class UserProfile {
       dailyCarbsGoal: json['dailyCarbsGoal'].toDouble(),
       dailyFatGoal: json['dailyFatGoal'].toDouble(),
       dailyWaterGoal: json['dailyWaterGoal'].toDouble(),
+      healthConditions: json['healthConditions'] != null 
+          ? List<String>.from(json['healthConditions'])
+          : [],
+      allergies: json['allergies'] != null 
+          ? List<String>.from(json['allergies'])
+          : [],
     );
   }
 
@@ -74,6 +86,8 @@ class UserProfile {
     double? dailyCarbsGoal,
     double? dailyFatGoal,
     double? dailyWaterGoal,
+    List<String>? healthConditions,
+    List<String>? allergies,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -88,6 +102,8 @@ class UserProfile {
       dailyCarbsGoal: dailyCarbsGoal ?? this.dailyCarbsGoal,
       dailyFatGoal: dailyFatGoal ?? this.dailyFatGoal,
       dailyWaterGoal: dailyWaterGoal ?? this.dailyWaterGoal,
+      healthConditions: healthConditions ?? this.healthConditions,
+      allergies: allergies ?? this.allergies,
     );
   }
 

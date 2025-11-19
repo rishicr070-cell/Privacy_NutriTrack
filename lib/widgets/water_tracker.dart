@@ -51,12 +51,12 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.blue.withOpacity(0.05),
-              Colors.lightBlue.withOpacity(0.02),
+              Colors.blue.withAlpha(13),
+              Colors.lightBlue.withAlpha(5),
             ],
           ),
           border: Border.all(
-            color: Colors.blue.withOpacity(0.2),
+            color: Colors.blue.withAlpha(51),
             width: 1.5,
           ),
         ),
@@ -79,7 +79,7 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
                           borderRadius: BorderRadius.circular(14),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.blue.withOpacity(0.3),
+                              color: Colors.blue.withAlpha(77),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -109,7 +109,7 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                              color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                             ),
                           ),
                         ],
@@ -119,7 +119,7 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.15),
+                      color: Colors.blue.withAlpha(38),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -150,7 +150,7 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
                               child: LinearProgressIndicator(
                                 value: value,
                                 minHeight: 12,
-                                backgroundColor: Colors.blue.withOpacity(0.15),
+                                backgroundColor: Colors.blue.withAlpha(38),
                                 valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
                               ),
                             );
@@ -195,7 +195,7 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
                     ),
                   ),
                   Text(
@@ -230,12 +230,12 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
                                     colors: [Colors.blue, Colors.lightBlue],
                                   )
                                 : null,
-                            color: index >= glassCount ? Colors.blue.withOpacity(0.1) : null,
+                            color: index >= glassCount ? Colors.blue.withAlpha(26) : null,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: index < glassCount
-                                  ? Colors.blue.withOpacity(0.3)
-                                  : Colors.blue.withOpacity(0.2),
+                                  ? Colors.blue.withAlpha(77)
+                                  : Colors.blue.withAlpha(51),
                               width: 1.5,
                             ),
                           ),
@@ -244,7 +244,7 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
                               Icons.water_drop,
                               color: index < glassCount
                                   ? Colors.white
-                                  : Colors.blue.withOpacity(0.3),
+                                  : Colors.blue.withAlpha(77),
                               size: 20,
                             ),
                           ),
@@ -292,8 +292,8 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: fillPercentage > 0.5 
-                      ? Colors.white.withOpacity(0.8) 
-                      : Colors.blue.withOpacity(0.7),
+                      ? Colors.white.withAlpha(204) 
+                      : Colors.blue.withAlpha(179),
                 ),
               ),
             ],
@@ -324,12 +324,12 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
                         : [Colors.blue, Colors.lightBlue],
                   )
                 : null,
-            color: onPressed == null ? Colors.grey.withOpacity(0.2) : null,
+            color: onPressed == null ? Colors.grey.withAlpha(51) : null,
             borderRadius: BorderRadius.circular(16),
             boxShadow: onPressed != null
                 ? [
                     BoxShadow(
-                      color: (isRemove ? Colors.red : Colors.blue).withOpacity(0.3),
+                      color: (isRemove ? Colors.red : Colors.blue).withAlpha(77),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -373,7 +373,7 @@ class WaterGlassPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Draw glass outline
     final glassPaint = Paint()
-      ..color = Colors.blue.withOpacity(0.3)
+      ..color = Colors.blue.withAlpha(77)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
@@ -393,8 +393,8 @@ class WaterGlassPainter extends CustomPainter {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.blue.withOpacity(0.7),
-            Colors.blue.withOpacity(0.9),
+            Colors.blue.withAlpha(179),
+            Colors.blue.withAlpha(230),
           ],
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
