@@ -77,6 +77,13 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  // Public method to set theme explicitly
+  void setTheme(bool isDark) {
+    if (_isDarkMode != isDark) {
+      _toggleTheme();
+    }
+  }
+
   void _updateSystemUI() {
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(

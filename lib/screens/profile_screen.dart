@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../models/user_profile.dart';
 import '../utils/storage_helper.dart';
+import '../main.dart';
 import 'edit_profile_screen.dart';
 import 'health_conditions_screen.dart';
 
@@ -72,13 +73,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     setState(() => _isDarkMode = value);
     await StorageHelper.setDarkMode(value);
     
-    // Force app to rebuild with new theme
-    if (mounted) {
-      // Find the root app and trigger rebuild
-      final appState = context.findAncestorStateOfType<State<MaterialApp>>();
-      if (appState != null && appState.mounted) {
-        (appState as dynamic).setState(() {});
-      }
+    // Trigger theme change in main app using the global key
+    if (mounted && appKey.currentState != null) {
+      appKey.currentState!.setTheme(value);
     }
   }
 
