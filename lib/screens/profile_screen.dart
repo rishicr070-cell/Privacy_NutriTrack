@@ -783,7 +783,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 subtitle: Text(_isDarkMode ? 'Enabled' : 'Disabled'),
                 value: _isDarkMode,
                 onChanged: _toggleDarkMode,
-                activeColor: const Color(0xFF00C9FF),
+                activeThumbColor: const Color(0xFF00C9FF),
               ),
               const Divider(height: 1),
               ListTile(
