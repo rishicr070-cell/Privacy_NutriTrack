@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/user_profile.dart';
 import '../utils/storage_helper.dart';
-import '../main.dart';
+import '../theme/theme_manager.dart';
 import 'edit_profile_screen.dart';
 import 'health_conditions_screen.dart';
 
@@ -19,7 +20,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   UserProfile? _userProfile;
   Map<String, double> _weightData = {};
   bool _isLoading = true;
-  bool _isDarkMode = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -31,16 +31,31 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _loadData() async {
+    print('=== LOADING PROFILE DATA ===');
     setState(() => _isLoading = true);
-    final profile = await StorageHelper.getUserProfile();
-    final weightData = await StorageHelper.getWeightData();
-    final isDark = await StorageHelper.isDarkMode();
-    setState(() {
-      _userProfile = profile;
-      _weightData = weightData;
-      _isDarkMode = isDark;
-      _isLoading = false;
-    });
+    
+    try {
+      print('Calling StorageHelper.getUserProfile()...');
+      final profile = await StorageHelper.getUserProfile();
+      print('Profile loaded: ${profile != null ? "Found profile for ${profile.name}" : "No profile found"}');
+      
+      print('Calling StorageHelper.getWeightData()...');
+      final weightData = await StorageHelper.getWeightData();
+      print('Weight data loaded: ${weightData.length} entries');
+      
+      setState(() {
+        _userProfile = profile;
+        _weightData = weightData;
+        _isLoading = false;
+      });
+      
+      print('=== PROFILE DATA LOAD COMPLETE ===');
+    } catch (e, stackTrace) {
+      print('=== ERROR LOADING PROFILE DATA ===');
+      print('Error: $e');
+      print('Stack trace: $stackTrace');
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _navigateToEditProfile() async {
@@ -69,13 +84,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  Future<void> _toggleDarkMode(bool value) async {
-    setState(() => _isDarkMode = value);
-    await StorageHelper.setDarkMode(value);
-    
-    // Trigger theme change in main app using the global key
-    if (mounted && appKey.currentState != null) {
-      appKey.currentState!.setTheme(value);
+  void _toggleDarkMode(bool value) {
+    if (value != context.read<ThemeManager>().isDarkMode) {
+      context.read<ThemeManager>().toggleTheme();
     }
   }
 
@@ -759,28 +770,18 @@ class _ProfileScreenState extends State<ProfileScreen>
           elevation: 0,
           child: Column(
             children: [
-              SwitchListTile(
-                secondary: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        _isDarkMode ? Colors.orange : const Color(0xFF00C9FF),
-                        _isDarkMode ? Colors.amber : const Color(0xFF92FE9D),
-                      ],
+              Consumer<ThemeManager>(
+                builder: (context, themeManager, _) {
+                  return SwitchListTile(
+                    secondary: Icon(
+                      themeManager.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    _isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                    color: Colors.white,
-                  ),
-                ),
-                title: const Text('Dark Mode'),
-                subtitle: Text(_isDarkMode ? 'Enabled' : 'Disabled'),
-                value: _isDarkMode,
-                onChanged: _toggleDarkMode,
-                activeThumbColor: const Color(0xFF00C9FF),
+                    title: const Text('Dark Mode'),
+                    value: themeManager.isDarkMode,
+                    onChanged: (value) => themeManager.toggleTheme(),
+                  );
+                },
               ),
               const Divider(height: 1),
               ListTile(

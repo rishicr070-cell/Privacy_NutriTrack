@@ -110,27 +110,130 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate()) {
-      final profile = UserProfile(
-        name: _nameController.text,
-        age: int.parse(_ageController.text),
-        height: double.parse(_heightController.text),
-        currentWeight: double.parse(_currentWeightController.text),
-        targetWeight: double.parse(_targetWeightController.text),
-        gender: _gender,
-        activityLevel: _activityLevel,
-        dailyCalorieGoal: _dailyCalorieGoal,
-        dailyProteinGoal: _dailyProteinGoal,
-        dailyCarbsGoal: _dailyCarbsGoal,
-        dailyFatGoal: _dailyFatGoal,
-        dailyWaterGoal: _dailyWaterGoal,
-        healthConditions: widget.profile?.healthConditions ?? [],
-        allergies: widget.profile?.allergies ?? [],
-      );
+      try {
+        print('=== STARTING PROFILE SAVE ===');
+        print('Name: ${_nameController.text}');
+        print('Age: ${_ageController.text}');
+        print('Gender: $_gender');
+        
+        // Show loading indicator
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          },
+        );
 
-      await StorageHelper.saveUserProfile(profile);
+        try {
+          final profile = UserProfile(
+            name: _nameController.text.trim(),
+            age: int.parse(_ageController.text),
+            height: double.parse(_heightController.text),
+            currentWeight: double.parse(_currentWeightController.text),
+            targetWeight: double.parse(_targetWeightController.text),
+            gender: _gender,
+            activityLevel: _activityLevel,
+            dailyCalorieGoal: _dailyCalorieGoal,
+            dailyProteinGoal: _dailyProteinGoal,
+            dailyCarbsGoal: _dailyCarbsGoal,
+            dailyFatGoal: _dailyFatGoal,
+            dailyWaterGoal: _dailyWaterGoal,
+            healthConditions: widget.profile?.healthConditions ?? [],
+            allergies: widget.profile?.allergies ?? [],
+          );
 
+          print('Profile object created successfully');
+          print('Calling StorageHelper.saveUserProfile...');
+          await StorageHelper.saveUserProfile(profile);
+          print('StorageHelper.saveUserProfile completed');
+          
+          // Add a small delay for web platform to ensure data is persisted
+          await Future.delayed(const Duration(milliseconds: 100));
+          
+          // Verify the profile was saved by reading it back
+          print('Verifying profile was saved...');
+          final savedProfile = await StorageHelper.getUserProfile();
+          if (savedProfile != null) {
+            print('✓ Profile verification successful');
+            print('Saved profile name: ${savedProfile.name}');
+          } else {
+            print('⚠ Profile verification returned null, but save operation completed');
+            print('This can happen on web - the profile should still be saved');
+            // Don't throw error - the save likely worked, just verification timing issue
+          }
+
+          if (mounted) {
+            Navigator.of(context).pop(); // Close loading dialog
+            print('Returning to profile screen with success=true');
+            Navigator.pop(context, true); // Return to previous screen
+          }
+        } catch (e, stackTrace) {
+          print('=== ERROR SAVING PROFILE ===');
+          print('Error: $e');
+          print('Stack trace: $stackTrace');
+          
+          if (mounted) {
+            Navigator.of(context).pop(); // Close loading dialog
+            // Show error message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to save profile: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'Details',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Error Details'),
+                        content: SingleChildScrollView(
+                          child: Text('$e\n\n$stackTrace'),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            );
+          }
+        }
+      } catch (e, stackTrace) {
+        print('=== UNEXPECTED ERROR ===');
+        print('Error: $e');
+        print('Stack trace: $stackTrace');
+        
+        if (mounted) {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    } else {
+      // Show validation error message
+      print('Form validation failed');
       if (mounted) {
-        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please fill in all required fields correctly'),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
     }
   }

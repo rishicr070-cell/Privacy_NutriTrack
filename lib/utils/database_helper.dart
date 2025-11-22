@@ -183,28 +183,54 @@ class DatabaseHelper {
 
   /// Save or update user profile
   Future<int> saveUserProfile(UserProfile profile) async {
-    final db = await database;
-    final profileMap = profile.toJson();
-    profileMap['id'] = 1; // Always use ID 1 for single user profile
-    
-    return await db.insert(
-      'user_profile',
-      profileMap,
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    try {
+      final db = await database;
+      final profileMap = profile.toJson();
+      profileMap['id'] = 1; // Always use ID 1 for single user profile
+      
+      // Convert lists to comma-separated strings
+      profileMap['healthConditions'] = profile.healthConditions.join(',');
+      profileMap['allergies'] = profile.allergies.join(',');
+      
+      print('Saving profile: $profileMap'); // Debug log
+      
+      final result = await db.insert(
+        'user_profile',
+        profileMap,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      
+      print('Profile saved successfully, result: $result'); // Debug log
+      return result;
+    } catch (e) {
+      print('Error saving profile to database: $e');
+      rethrow;
+    }
   }
 
   /// Get user profile
   Future<UserProfile?> getUserProfile() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'user_profile',
-      where: 'id = ?',
-      whereArgs: [1],
-    );
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'user_profile',
+        where: 'id = ?',
+        whereArgs: [1],
+      );
 
-    if (maps.isEmpty) return null;
-    return UserProfile.fromJson(maps.first);
+      if (maps.isEmpty) return null;
+
+      final map = Map<String, dynamic>.from(maps.first);
+      
+      // Parse the comma-separated strings back to lists
+      map['healthConditions'] = (map['healthConditions'] as String?)?.split(',').where((s) => s.isNotEmpty).toList() ?? [];
+      map['allergies'] = (map['allergies'] as String?)?.split(',').where((s) => s.isNotEmpty).toList() ?? [];
+      
+      return UserProfile.fromJson(map);
+    } catch (e) {
+      print('Error loading profile from database: $e');
+      return null;
+    }
   }
 
   /// Delete user profile

@@ -1,35 +1,52 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'database_helper.dart';
-import 'secure_storage_helper.dart';
 import '../models/food_entry.dart';
 import '../models/user_profile.dart';
+import 'secure_storage_helper.dart';
 
-/// Unified storage helper that combines SQLite database and secure storage
-/// - SQLite: For bulk data (food entries, profile)
-/// - Secure Storage: For sensitive data (theme preferences, settings)
-/// - SharedPreferences: For simple key-value data
+// Only import database_helper on non-web platforms
+import 'database_helper.dart' if (dart.library.js) 'database_helper_stub.dart';
+
+/// Unified storage helper that adapts based on platform
+/// - Web: Uses SharedPreferences for everything
+/// - Mobile/Desktop: Uses SQLite + Secure Storage
 class StorageHelper {
   static SharedPreferences? _prefs;
-  static final DatabaseHelper _db = DatabaseHelper();
+  static DatabaseHelper? _db;
   static final SecureStorageHelper _secure = SecureStorageHelper();
+  static bool _useSharedPrefsOnly = kIsWeb; // Use SharedPreferences on web
 
   /// Initialize storage systems
   static Future<void> init() async {
     try {
       _prefs = await SharedPreferences.getInstance();
-      // Database initializes lazily when first accessed
-      print('Storage systems initialized');
+      
+      if (!_useSharedPrefsOnly) {
+        try {
+          _db = DatabaseHelper();
+        } catch (e) {
+          print('Database initialization failed, using SharedPreferences: $e');
+          _useSharedPrefsOnly = true;
+        }
+      }
+      
+      print('Storage systems initialized (Web mode: $_useSharedPrefsOnly)');
     } catch (e) {
       print('Storage initialization error: $e');
-      rethrow;
+      // Fallback to SharedPreferences only
+      _useSharedPrefsOnly = true;
+      print('Falling back to SharedPreferences-only mode');
     }
   }
 
-  // ==================== THEME (Secure Storage) ====================
+  // ==================== THEME ====================
 
-  /// Get dark mode preference from secure storage
   static Future<bool> isDarkMode() async {
     try {
+      if (_useSharedPrefsOnly) {
+        return _prefs?.getBool('dark_mode') ?? false;
+      }
       return await _secure.isDarkMode();
     } catch (e) {
       print('Error reading dark mode: $e');
@@ -37,135 +54,228 @@ class StorageHelper {
     }
   }
 
-  /// Set dark mode preference in secure storage
   static Future<void> setDarkMode(bool value) async {
     try {
-      await _secure.setDarkMode(value);
+      if (_useSharedPrefsOnly) {
+        await _prefs?.setBool('dark_mode', value);
+      } else {
+        await _secure.setDarkMode(value);
+      }
     } catch (e) {
       print('Error saving dark mode: $e');
     }
   }
 
-  // ==================== USER PROFILE (SQLite) ====================
+  // ==================== USER PROFILE ====================
 
-  /// Get user profile from database
   static Future<UserProfile?> getUserProfile() async {
     try {
-      return await _db.getUserProfile();
+      if (_useSharedPrefsOnly) {
+        if (_prefs == null) {
+          print('SharedPreferences not initialized');
+          return null;
+        }
+        final jsonString = _prefs!.getString('user_profile');
+        print('Retrieved profile JSON from SharedPreferences: ${jsonString != null ? "Found (${jsonString.length} chars)" : "null"}');
+        
+        if (jsonString == null) return null;
+        
+        final profileData = jsonDecode(jsonString);
+        final profile = UserProfile.fromJson(profileData);
+        print('Successfully decoded profile for: ${profile.name}');
+        return profile;
+      }
+      return await _db?.getUserProfile();
     } catch (e) {
       print('Error loading profile: $e');
       return null;
     }
   }
 
-  /// Save user profile to database
   static Future<void> saveUserProfile(UserProfile profile) async {
     try {
-      await _db.saveUserProfile(profile);
+      print('Saving profile (Web mode: $_useSharedPrefsOnly)');
+      
+      if (_useSharedPrefsOnly) {
+        if (_prefs == null) {
+          throw Exception('SharedPreferences not initialized');
+        }
+        final jsonString = jsonEncode(profile.toJson());
+        print('Encoded profile JSON: ${jsonString.substring(0, jsonString.length > 100 ? 100 : jsonString.length)}...');
+        
+        final success = await _prefs!.setString('user_profile', jsonString);
+        print('Profile saved to SharedPreferences: success=$success');
+        
+        if (!success) {
+          throw Exception('SharedPreferences.setString returned false');
+        }
+      } else {
+        await _db?.saveUserProfile(profile);
+        print('Profile saved to SQLite');
+      }
     } catch (e) {
       print('Error saving profile: $e');
+      rethrow;
     }
   }
 
-  // ==================== FOOD ENTRIES (SQLite) ====================
+  // ==================== FOOD ENTRIES ====================
 
-  /// Get all food entries from database
   static Future<List<FoodEntry>> getFoodEntries() async {
     try {
-      return await _db.getAllFoodEntries();
+      if (_useSharedPrefsOnly) {
+        final jsonString = _prefs?.getString('food_entries');
+        if (jsonString == null) return [];
+        
+        final List<dynamic> jsonList = jsonDecode(jsonString);
+        return jsonList.map((json) => FoodEntry.fromJson(json)).toList();
+      }
+      return await _db?.getAllFoodEntries() ?? [];
     } catch (e) {
       print('Error loading food entries: $e');
       return [];
     }
   }
 
-  /// Get food entries within a date range
   static Future<List<FoodEntry>> getFoodEntriesByDateRange(
     DateTime start,
     DateTime end,
   ) async {
     try {
-      return await _db.getFoodEntriesByDateRange(start, end);
+      if (_useSharedPrefsOnly) {
+        final entries = await getFoodEntries();
+        return entries.where((entry) {
+          return entry.timestamp.isAfter(start) && entry.timestamp.isBefore(end);
+        }).toList();
+      }
+      return await _db?.getFoodEntriesByDateRange(start, end) ?? [];
     } catch (e) {
       print('Error loading food entries by date: $e');
       return [];
     }
   }
 
-  /// Save a single food entry to database
   static Future<void> saveFoodEntry(FoodEntry entry) async {
     try {
-      await _db.insertFoodEntry(entry);
+      if (_useSharedPrefsOnly) {
+        final entries = await getFoodEntries();
+        entries.add(entry);
+        await _prefs?.setString(
+          'food_entries',
+          jsonEncode(entries.map((e) => e.toJson()).toList()),
+        );
+      } else {
+        await _db?.insertFoodEntry(entry);
+      }
     } catch (e) {
       print('Error saving food entry: $e');
     }
   }
 
-  /// Delete a food entry from database
   static Future<void> deleteFoodEntry(String id) async {
     try {
-      await _db.deleteFoodEntry(id);
+      if (_useSharedPrefsOnly) {
+        final entries = await getFoodEntries();
+        entries.removeWhere((entry) => entry.id == id);
+        await _prefs?.setString(
+          'food_entries',
+          jsonEncode(entries.map((e) => e.toJson()).toList()),
+        );
+      } else {
+        await _db?.deleteFoodEntry(id);
+      }
     } catch (e) {
       print('Error deleting food entry: $e');
     }
   }
 
-  /// Update a food entry in database
   static Future<void> updateFoodEntry(FoodEntry entry) async {
     try {
-      await _db.updateFoodEntry(entry);
+      if (_useSharedPrefsOnly) {
+        final entries = await getFoodEntries();
+        final index = entries.indexWhere((e) => e.id == entry.id);
+        if (index != -1) {
+          entries[index] = entry;
+          await _prefs?.setString(
+            'food_entries',
+            jsonEncode(entries.map((e) => e.toJson()).toList()),
+          );
+        }
+      } else {
+        await _db?.updateFoodEntry(entry);
+      }
     } catch (e) {
       print('Error updating food entry: $e');
     }
   }
 
-  // ==================== WATER INTAKE (SQLite) ====================
+  // ==================== WATER INTAKE ====================
 
-  /// Get all water intake data
   static Future<Map<String, int>> getWaterIntake() async {
     try {
-      return await _db.getAllWaterIntake();
+      if (_useSharedPrefsOnly) {
+        final jsonString = _prefs?.getString('water_intake');
+        if (jsonString == null) return {};
+        return Map<String, int>.from(jsonDecode(jsonString));
+      }
+      return await _db?.getAllWaterIntake() ?? {};
     } catch (e) {
       print('Error loading water intake: $e');
       return {};
     }
   }
 
-  /// Save water intake for a specific date
   static Future<void> saveWaterIntake(String date, int amount) async {
     try {
-      await _db.saveWaterIntake(date, amount);
+      if (_useSharedPrefsOnly) {
+        final waterData = await getWaterIntake();
+        waterData[date] = amount;
+        await _prefs?.setString('water_intake', jsonEncode(waterData));
+      } else {
+        await _db?.saveWaterIntake(date, amount);
+      }
     } catch (e) {
       print('Error saving water intake: $e');
     }
   }
 
-  // ==================== WEIGHT TRACKING (SQLite) ====================
+  // ==================== WEIGHT TRACKING ====================
 
-  /// Get all weight data
   static Future<Map<String, double>> getWeightData() async {
     try {
-      return await _db.getAllWeights();
+      if (_useSharedPrefsOnly) {
+        final jsonString = _prefs?.getString('weight_data');
+        if (jsonString == null) return {};
+        return Map<String, double>.from(jsonDecode(jsonString));
+      }
+      return await _db?.getAllWeights() ?? {};
     } catch (e) {
       print('Error loading weight data: $e');
       return {};
     }
   }
 
-  /// Save weight for a specific date
   static Future<void> saveWeight(String date, double weight) async {
     try {
-      await _db.saveWeight(date, weight);
+      if (_useSharedPrefsOnly) {
+        final weightData = await getWeightData();
+        weightData[date] = weight;
+        await _prefs?.setString('weight_data', jsonEncode(weightData));
+      } else {
+        await _db?.saveWeight(date, weight);
+      }
     } catch (e) {
       print('Error saving weight: $e');
     }
   }
 
-  // ==================== USER PREFERENCES (Secure Storage) ====================
+  // ==================== USER PREFERENCES ====================
 
-  /// Get notification preference
   static Future<bool> areNotificationsEnabled() async {
     try {
+      if (_useSharedPrefsOnly) {
+        return _prefs?.getBool('notifications_enabled') ?? false;
+      }
       return await _secure.areNotificationsEnabled();
     } catch (e) {
       print('Error reading notifications preference: $e');
@@ -173,18 +283,23 @@ class StorageHelper {
     }
   }
 
-  /// Set notification preference
   static Future<void> setNotificationsEnabled(bool enabled) async {
     try {
-      await _secure.setNotificationsEnabled(enabled);
+      if (_useSharedPrefsOnly) {
+        await _prefs?.setBool('notifications_enabled', enabled);
+      } else {
+        await _secure.setNotificationsEnabled(enabled);
+      }
     } catch (e) {
       print('Error saving notifications preference: $e');
     }
   }
 
-  /// Check if this is first run
   static Future<bool> isFirstRun() async {
     try {
+      if (_useSharedPrefsOnly) {
+        return _prefs?.getBool('first_run') ?? true;
+      }
       return await _secure.isFirstRun();
     } catch (e) {
       print('Error checking first run: $e');
@@ -192,10 +307,13 @@ class StorageHelper {
     }
   }
 
-  /// Set first run flag
   static Future<void> setFirstRun(bool value) async {
     try {
-      await _secure.setFirstRun(value);
+      if (_useSharedPrefsOnly) {
+        await _prefs?.setBool('first_run', value);
+      } else {
+        await _secure.setFirstRun(value);
+      }
     } catch (e) {
       print('Error setting first run: $e');
     }
@@ -203,66 +321,60 @@ class StorageHelper {
 
   // ==================== DATA MANAGEMENT ====================
 
-  /// Clear all data from all storage systems
   static Future<void> clearAllData() async {
     try {
-      await _db.clearAllData();
-      await _secure.clearAll();
-      await _prefs?.clear();
-      print('All data cleared from all storage systems');
+      if (_useSharedPrefsOnly) {
+        await _prefs?.clear();
+      } else {
+        await _db?.clearAllData();
+        await _secure.clearAll();
+        await _prefs?.clear();
+      }
+      print('All data cleared');
     } catch (e) {
       print('Error clearing all data: $e');
     }
   }
 
-  /// Get database statistics
   static Future<Map<String, int>> getDatabaseStats() async {
     try {
-      return await _db.getDatabaseStats();
+      if (_useSharedPrefsOnly) {
+        final entries = await getFoodEntries();
+        final waterData = await getWaterIntake();
+        final weightData = await getWeightData();
+        
+        return {
+          'food_entries': entries.length,
+          'water_records': waterData.length,
+          'weight_records': weightData.length,
+        };
+      }
+      return await _db?.getDatabaseStats() ?? {};
     } catch (e) {
       print('Error getting database stats: $e');
       return {};
     }
   }
 
-  /// Close database connection
   static Future<void> close() async {
     try {
-      await _db.close();
+      if (!_useSharedPrefsOnly) {
+        await _db?.close();
+      }
     } catch (e) {
       print('Error closing database: $e');
     }
   }
 
-  // ==================== MIGRATION HELPER ====================
-
-  /// Migrate data from SharedPreferences to SQLite (if needed)
-  static Future<void> migrateFromSharedPreferences() async {
-    try {
-      // Check if migration is needed
-      final migrated = _prefs?.getBool('migrated_to_sqlite') ?? false;
-      if (migrated) {
-        print('Data already migrated');
-        return;
-      }
-
-      print('Starting migration from SharedPreferences to SQLite...');
-
-      // Note: If you had old data in SharedPreferences, you could migrate it here
-      // For now, we'll just mark as migrated
-
-      await _prefs?.setBool('migrated_to_sqlite', true);
-      print('Migration completed successfully');
-    } catch (e) {
-      print('Migration error: $e');
-    }
-  }
-
   // ==================== BACKUP HELPERS ====================
 
-  /// Get last backup timestamp
   static Future<DateTime?> getLastBackupTime() async {
     try {
+      if (_useSharedPrefsOnly) {
+        final timestamp = _prefs?.getInt('last_backup_time');
+        if (timestamp == null) return null;
+        return DateTime.fromMillisecondsSinceEpoch(timestamp);
+      }
       return await _secure.getLastBackupTime();
     } catch (e) {
       print('Error getting last backup time: $e');
@@ -270,10 +382,13 @@ class StorageHelper {
     }
   }
 
-  /// Save last backup timestamp
   static Future<void> saveLastBackupTime(DateTime timestamp) async {
     try {
-      await _secure.saveLastBackupTime(timestamp);
+      if (_useSharedPrefsOnly) {
+        await _prefs?.setInt('last_backup_time', timestamp.millisecondsSinceEpoch);
+      } else {
+        await _secure.saveLastBackupTime(timestamp);
+      }
     } catch (e) {
       print('Error saving last backup time: $e');
     }
@@ -281,10 +396,11 @@ class StorageHelper {
 
   // ==================== DEBUGGING ====================
 
-  /// Print storage statistics (for debugging)
   static Future<void> printStorageStats() async {
     try {
       print('=== Storage Statistics ===');
+      print('Platform: ${_useSharedPrefsOnly ? "Web (SharedPreferences)" : "Native (SQLite)"}');
+      
       final stats = await getDatabaseStats();
       print('Food entries: ${stats['food_entries']}');
       print('Water records: ${stats['water_records']}');
