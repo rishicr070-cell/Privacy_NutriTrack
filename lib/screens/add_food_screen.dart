@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/food_entry.dart';
 import '../models/food_item.dart';
+import '../models/user_profile.dart';
 import '../utils/storage_helper.dart';
 import '../utils/food_data_loader.dart';
+import '../utils/health_alert_service.dart';
+import 'food_scanner_screen.dart';
 
 class AddFoodScreen extends StatefulWidget {
   final String mealType;
@@ -147,8 +150,56 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     super.dispose();
   }
 
+  Future<void> _openFoodScanner() async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const FoodScannerScreen(),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _searchController.text = result['name'] as String;
+        _isManualEntry = true;
+      });
+    }
+  }
+
   Future<void> _saveFood() async {
     if (_formKey.currentState!.validate()) {
+      // Create food item for health check
+      final foodItem = FoodItem(
+        foodCode: 'manual_entry',
+        foodName: _searchController.text.trim(),
+        energyKcal: double.parse(_caloriesController.text),
+        proteinG: double.parse(_proteinController.text),
+        carbG: double.parse(_carbsController.text),
+        fatG: double.parse(_fatController.text),
+      );
+
+      final servingSize = double.parse(_servingSizeController.text);
+
+      // Get user profile and check for health alerts
+      final profile = await StorageHelper.getUserProfile();
+      final alerts = HealthAlertService.checkFoodAlerts(
+        foodItem,
+        profile,
+        servingSize,
+      );
+
+      // If there are danger alerts, show warning dialog
+      if (alerts.any((alert) => alert.severity == HealthAlertSeverity.danger)) {
+        final shouldContinue = await _showHealthAlertDialog(alerts);
+        if (!shouldContinue) {
+          return; // User chose not to add this food
+        }
+      } else if (alerts.isNotEmpty) {
+        // Show warning alerts but allow saving
+        await _showHealthWarningDialog(alerts);
+      }
+
+      // Create entry and save
       final entry = FoodEntry(
         id: widget.existingEntry?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         name: _searchController.text.trim(),
@@ -174,6 +225,167 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     }
   }
 
+  Future<bool> _showHealthAlertDialog(List<HealthAlert> alerts) async {
+    final dangerAlerts = alerts.where((a) => a.severity == HealthAlertSeverity.danger).toList();
+    
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 48),
+        title: const Text(
+          '⚠️ Health Warning',
+          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This food may not be suitable for your health conditions:',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 16),
+              ...dangerAlerts.map((alert) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      alert.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red.shade900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      alert.message,
+                      style: TextStyle(color: Colors.red.shade800),
+                    ),
+                  ],
+                ),
+              )),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Consider consulting your doctor before consuming this food.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text(
+              'Add Anyway',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  Future<void> _showHealthWarningDialog(List<HealthAlert> alerts) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.info_outline, color: Colors.orange, size: 48),
+        title: const Text(
+          'ℹ️ Nutrition Information',
+          style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Please be aware:',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 16),
+              ...alerts.map((alert) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      alert.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      alert.message,
+                      style: TextStyle(color: Colors.orange.shade800),
+                    ),
+                  ],
+                ),
+              )),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text(
+              'Understood',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -183,6 +395,11 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          IconButton(
+            onPressed: _openFoodScanner,
+            icon: const Icon(Icons.camera_alt),
+            tooltip: 'Scan Food',
+          ),
           if (!_isManualEntry && _selectedFood == null && _allFoods.isNotEmpty)
             TextButton.icon(
               onPressed: _switchToManualEntry,

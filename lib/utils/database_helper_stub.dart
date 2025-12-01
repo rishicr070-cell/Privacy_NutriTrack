@@ -11,6 +11,7 @@ class DatabaseHelper {
   Future<UserProfile?> getUserProfile() async => null;
   Future<int> saveUserProfile(UserProfile profile) async => 0;
   Future<List<FoodEntry>> getAllFoodEntries() async => [];
+  Future<List<FoodEntry>> getFoodEntries() async => []; // Added missing method
   Future<List<FoodEntry>> getFoodEntriesByDateRange(DateTime start, DateTime end) async => [];
   Future<int> insertFoodEntry(FoodEntry entry) async => 0;
   Future<int> updateFoodEntry(FoodEntry entry) async => 0;

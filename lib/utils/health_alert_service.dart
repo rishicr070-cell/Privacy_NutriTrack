@@ -31,7 +31,11 @@ class HealthAlertService {
       'highCarbLimit': 45.0, // grams per serving
       'restrictedFoods': [
         'sugar', 'candy', 'cake', 'pastry', 'soda', 'juice', 'honey',
-        'jaggery', 'gulab jamun', 'jalebi', 'rasgulla', 'burfi', 'ladoo'
+        'jaggery', 'gulab jamun', 'jalebi', 'rasgulla', 'burfi', 'ladoo',
+        'ice cream', 'chocolate', 'cookie', 'biscuit', 'sweet', 'mithai',
+        'kheer', 'halwa', 'barfi', 'peda', 'mysore pak', 'kaju katli',
+        'ras malai', 'chocolate ice cream', 'vanilla ice cream', 'kulfi',
+        'falooda', 'shrikhand', 'basundi'
       ],
     },
     'hypertension': {
@@ -191,12 +195,25 @@ class HealthAlertService {
       // Diabetes checks
       if (condition == 'diabetes') {
         final highCarbLimit = rules['highCarbLimit'] as double;
+        
+        // High carbs warning
         if (actualCarbs > highCarbLimit) {
           alerts.add(HealthAlert(
             title: '$icon High Carbohydrate Warning',
             message:
                 'This serving contains ${actualCarbs.toInt()}g of carbs, which is high for diabetes management. Consider a smaller portion.',
             severity: HealthAlertSeverity.warning,
+            condition: condition,
+          ));
+        }
+        
+        // Very high carbs - danger alert
+        if (actualCarbs > 60.0) {
+          alerts.add(HealthAlert(
+            title: '$icon DANGER: Very High Carbs',
+            message:
+                'This food contains ${actualCarbs.toInt()}g of carbs per serving! This can cause dangerous blood sugar spikes. Strongly not recommended for diabetes.',
+            severity: HealthAlertSeverity.danger,
             condition: condition,
           ));
         }
