@@ -38,5 +38,5 @@ flutter:
   assets:
     - assets/
     - assets/models/
-    - assets/models/best_int8.tflite
+    - assets/models/Fooddetector.tflite
     - assets/Anuvaad_INDB_2024.11.csv

@@ -2,7 +2,6 @@
 // ignore_for_file: avoid_web_libraries_in_flutter
 
 import 'dart:html' as html;
-import 'dart:convert';
 
 class WebStorage {
   static const String _prefix = 'nutritrack_';
