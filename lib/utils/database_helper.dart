@@ -106,27 +106,70 @@ class DatabaseHelper {
 
   /// Insert a new food entry
   Future<int> insertFoodEntry(FoodEntry entry) async {
-    final db = await database;
-    return await db.insert(
-      'food_entries',
-      entry.toJson()..['timestamp'] = entry.timestamp.millisecondsSinceEpoch,
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    try {
+      final db = await database;
+      print('Inserting food entry: ${entry.toJson()}'); // Debug log
+      final result = await db.insert(
+        'food_entries',
+        {
+          'id': entry.id,
+          'foodName': entry.name,
+          'calories': entry.calories,
+          'protein': entry.protein,
+          'carbs': entry.carbs,
+          'fat': entry.fat,
+          'servingSize': entry.servingSize,
+          'servingUnit': entry.servingUnit,
+          'mealType': entry.mealType,
+          'timestamp': entry.timestamp.millisecondsSinceEpoch,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      print('Food entry inserted with id: $result'); // Debug log
+      return result;
+    } catch (e) {
+      print('Error inserting food entry: $e');
+      rethrow;
+    }
   }
 
   /// Get all food entries
-  Future<List<FoodEntry>> getAllFoodEntries() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'food_entries',
-      orderBy: 'timestamp DESC',
-    );
-
-    return List.generate(maps.length, (i) {
-      final map = Map<String, dynamic>.from(maps[i]);
-      map['timestamp'] = DateTime.fromMillisecondsSinceEpoch(map['timestamp']);
-      return FoodEntry.fromJson(map);
-    });
+  Future<List<FoodEntry>> getFoodEntries() async {
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'food_entries',
+        orderBy: 'timestamp DESC',
+      );
+      
+      return List.generate(maps.length, (i) {
+        return FoodEntry(
+          id: maps[i]['id'] as String,
+          name: maps[i]['foodName'] as String,
+          calories: maps[i]['calories'] is int 
+              ? (maps[i]['calories'] as int).toDouble() 
+              : maps[i]['calories'] as double,
+          protein: maps[i]['protein'] is int 
+              ? (maps[i]['protein'] as int).toDouble() 
+              : maps[i]['protein'] as double,
+          carbs: maps[i]['carbs'] is int 
+              ? (maps[i]['carbs'] as int).toDouble() 
+              : maps[i]['carbs'] as double,
+          fat: maps[i]['fat'] is int 
+              ? (maps[i]['fat'] as int).toDouble() 
+              : maps[i]['fat'] as double,
+          servingSize: maps[i]['servingSize'] is int 
+              ? (maps[i]['servingSize'] as int).toDouble() 
+              : maps[i]['servingSize'] as double,
+          servingUnit: maps[i]['servingUnit'] as String,
+          timestamp: DateTime.fromMillisecondsSinceEpoch(maps[i]['timestamp'] as int),
+          mealType: maps[i]['mealType'] as String,
+        );
+      });
+    } catch (e) {
+      print('Error getting food entries: $e');
+      return [];
+    }
   }
 
   /// Get food entries for a specific date range

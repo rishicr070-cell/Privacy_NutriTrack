@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../models/food_entry.dart';
 
-class MealSection extends StatefulWidget {
+class MealSection extends StatelessWidget {
   final String title;
   final IconData icon;
   final Color color;
@@ -20,383 +20,264 @@ class MealSection extends StatefulWidget {
     required this.onDeleteEntry,
   });
 
-  @override
-  State<MealSection> createState() => _MealSectionState();
-}
-
-class _MealSectionState extends State<MealSection> with SingleTickerProviderStateMixin {
-  bool _isExpanded = true;
-  late AnimationController _rotationController;
-  late Animation<double> _rotationAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _rotationController = AnimationController(
-      duration: const Duration(milliseconds: 200),
-      vsync: this,
-    );
-    _rotationAnimation = Tween<double>(begin: 0, end: 0.5).animate(_rotationController);
-    if (!_isExpanded) _rotationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _rotationController.dispose();
-    super.dispose();
-  }
-
-  void _toggleExpanded() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-      if (_isExpanded) {
-        _rotationController.reverse();
-      } else {
-        _rotationController.forward();
-      }
-    });
-  }
-
   double get _totalCalories =>
-      widget.entries.fold(0, (sum, entry) => sum + entry.calories);
-
-  double get _totalProtein =>
-      widget.entries.fold(0, (sum, entry) => sum + entry.protein);
-
-  double get _totalCarbs =>
-      widget.entries.fold(0, (sum, entry) => sum + entry.carbs);
-
-  double get _totalFat =>
-      widget.entries.fold(0, (sum, entry) => sum + entry.fat);
+      entries.fold(0, (sum, entry) => sum + entry.calories);
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              widget.color.withAlpha(13),
-              widget.color.withAlpha(5),
-            ],
-          ),
-          border: Border.all(
-            color: widget.color.withAlpha(51),
-            width: 1.5,
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
         ),
-        child: Column(
-          children: [
-            InkWell(
-              onTap: widget.entries.isNotEmpty ? _toggleExpanded : widget.onAddPressed,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            widget.color,
-                            widget.color.withAlpha(179),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: widget.color.withAlpha(77),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Icon(widget.icon, color: Colors.white, size: 26),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                widget.title,
-                                style: TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                              if (widget.entries.isNotEmpty) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: widget.color.withAlpha(51),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    '${widget.entries.length}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: widget.color,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          if (widget.entries.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              '${_totalCalories.toInt()} kcal • P: ${_totalProtein.toInt()}g C: ${_totalCarbs.toInt()}g F: ${_totalFat.toInt()}g',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    if (widget.entries.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: widget.color.withAlpha(38),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.add,
-                          color: widget.color,
-                          size: 24,
-                        ),
-                      )
-                    else
-                      RotationTransition(
-                        turns: _rotationAnimation,
-                        child: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: widget.color,
-                          size: 28,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            AnimatedCrossFade(
-              firstChild: const SizedBox.shrink(),
-              secondChild: Column(
-                children: [
-                  const Divider(height: 1),
-                  ...widget.entries.map((entry) => _buildFoodEntryCard(context, entry)),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: TextButton.icon(
-                      onPressed: widget.onAddPressed,
-                      icon: Icon(Icons.add, color: widget.color),
-                      label: Text(
-                        'Add More',
-                        style: TextStyle(
-                          color: widget.color,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      style: TextButton.styleFrom(
-                        backgroundColor: widget.color.withAlpha(26),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 300),
-            ),
-          ],
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildHeader(context),
+          if (entries.isNotEmpty) ...[
+            const Divider(height: 1),
+            ...entries.map((entry) => _buildFoodItem(context, entry)),
+          ] else
+            _buildEmptyState(context),
+        ],
       ),
     );
   }
 
-  Widget _buildFoodEntryCard(BuildContext context, FoodEntry entry) {
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.15),
+            color.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                if (entries.isNotEmpty)
+                  Text(
+                    '${_totalCalories.toInt()} kcal • ${entries.length} items',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onAddPressed,
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Icon(
+                    Icons.add_rounded,
+                    color: color,
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFoodItem(BuildContext context, FoodEntry entry) {
     return Slidable(
+      key: ValueKey(entry.id),
       endActionPane: ActionPane(
-        motion: const BehindMotion(),
-        extentRatio: 0.25,
+        motion: const StretchMotion(),
         children: [
           SlidableAction(
-            onPressed: (_) => _showDeleteConfirmation(context, entry),
+            onPressed: (_) => onDeleteEntry(entry.id),
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
-            icon: Icons.delete_outline,
+            icon: Icons.delete_rounded,
             label: 'Delete',
-            borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
+            borderRadius: BorderRadius.circular(16),
           ),
         ],
       ),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
+          color: Theme.of(context).scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: widget.color.withAlpha(20),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          border: Border.all(
-            color: widget.color.withAlpha(38),
-            width: 1,
-          ),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 50,
-              decoration: BoxDecoration(
-                color: widget.color,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry.name,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      _buildMacroChip('P', entry.protein.toInt(), Colors.blue),
-                      const SizedBox(width: 6),
-                      _buildMacroChip('C', entry.carbs.toInt(), Colors.orange),
-                      const SizedBox(width: 6),
-                      _buildMacroChip('F', entry.fat.toInt(), Colors.purple),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: widget.color.withAlpha(26),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '${entry.servingSize.toInt()} ${entry.servingUnit}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: widget.color,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  color.withOpacity(0.2),
+                  color.withOpacity(0.1),
                 ],
               ),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            child: Icon(
+              Icons.restaurant,
+              color: color,
+              size: 22,
+            ),
+          ),
+          title: Text(
+            entry.name,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(
               children: [
-                Text(
-                  '${entry.calories.toInt()}',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: widget.color,
-                    height: 1,
-                  ),
+                _buildNutrientChip(
+                  '${entry.calories.toInt()} kcal',
+                  Icons.local_fire_department,
+                  Colors.orange,
                 ),
-                Text(
-                  'kcal',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: widget.color.withAlpha(179),
-                  ),
+                const SizedBox(width: 8),
+                _buildNutrientChip(
+                  'P: ${entry.protein.toInt()}g',
+                  Icons.fitness_center,
+                  Colors.blue,
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMacroChip(String label, int value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withAlpha(26),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withAlpha(77), width: 0.5),
-      ),
-      child: Text(
-        '$label:${value}g',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showDeleteConfirmation(BuildContext context, FoodEntry entry) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-            SizedBox(width: 12),
-            Text('Delete Entry?'),
-          ],
-        ),
-        content: Text('Are you sure you want to delete "${entry.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text('Delete'),
+            child: Text(
+              '${entry.servingSize.toInt()} ${entry.servingUnit}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNutrientChip(String text, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
+  }
 
-    if (confirmed == true) {
-      widget.onDeleteEntry(entry.id);
-    }
+  Widget _buildEmptyState(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 40,
+              color: color.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No items yet',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tap + to add food to $title',
+            style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

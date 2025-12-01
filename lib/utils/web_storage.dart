@@ -70,10 +70,17 @@ class WebStorage {
   
   static Set<String> getKeys() {
     try {
-      return html.window.localStorage.keys
+      print('WebStorage: Checking all localStorage keys...');
+      final allKeys = html.window.localStorage.keys.toList();
+      print('WebStorage: All keys in localStorage: $allKeys');
+      
+      final filtered = allKeys
           .where((k) => k.startsWith(_prefix))
           .map((k) => k.substring(_prefix.length))
           .toSet();
+      print('WebStorage: Filtered keys with prefix "$_prefix": $filtered');
+      
+      return filtered;
     } catch (e) {
       print('WebStorage: Error getting keys: $e');
       return {};

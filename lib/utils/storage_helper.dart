@@ -186,7 +186,7 @@ class StorageHelper {
         final List<dynamic> jsonList = jsonDecode(jsonString);
         return jsonList.map((json) => FoodEntry.fromJson(json)).toList();
       }
-      return await _db?.getAllFoodEntries() ?? [];
+      return await _db?.getFoodEntries() ?? [];
     } catch (e) {
       print('Error loading food entries: $e');
       return [];
