@@ -100,11 +100,11 @@ class FoodDetectorServiceImpl {
         (y) => List.generate(
           inputSize,
           (x) {
-            final pixel = image.getPixel(x, y);
+            final pixel = image.getPixelSafe(x, y);
             // Normalize to 0-1 range
-            final r = img.getRed(pixel) / 255.0;
-            final g = img.getGreen(pixel) / 255.0;
-            final b = img.getBlue(pixel) / 255.0;
+            final r = pixel.r.toDouble() / 255.0;
+            final g = pixel.g.toDouble() / 255.0;
+            final b = pixel.b.toDouble() / 255.0;
             return [r, g, b];
           },
         ),
