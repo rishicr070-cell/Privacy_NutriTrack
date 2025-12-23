@@ -1,0 +1,59 @@
+Alpha(13) 
+            : Theme.of(context).cardColor,
+      ),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+      ],
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Required';
+        if (double.tryParse(value) == null) return 'Invalid';
+        return null;
+      },
+    );
+  }
+
+  Widget _buildQuickAddButtons() {
+    final commonFoods = _allFoods.where((food) {
+      final name = food.name.toLowerCase();
+      return name.contains('banana') ||
+          name.contains('apple') ||
+          name.contains('egg') ||
+          name.contains('chicken') ||
+          name.contains('rice') ||
+          name.contains('milk');
+    }).take(6).toList();
+
+    if (commonFoods.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.flash_on, color: _getMealTypeColor()),
+            const SizedBox(width: 8),
+            const Text(
+              'Quick Add',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: commonFoods.map((food) {
+            return ActionChip(
+              label: Text(food.name),
+              avatar: Icon(Icons.flash_on, size: 16, color: _getMealTypeColor()),
+              backgroundColor: _getMealTypeColor().withAlpha(26),
+              side: BorderSide(color: _getMealTypeColor().withAlpha(77)),
+              onPressed: () => _selectFood(food),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}

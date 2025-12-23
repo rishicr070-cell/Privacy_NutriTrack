@@ -2,21 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/food_entry.dart';
 import '../models/food_item.dart';
-import '../models/user_profile.dart';
 import '../utils/storage_helper.dart';
 import '../utils/food_data_loader.dart';
 import '../utils/health_alert_service.dart';
+import '../services/tts_service.dart';
 import 'food_scanner_screen.dart';
+import '../services/gemini_service.dart';
+import 'dart:async';
 
 class AddFoodScreen extends StatefulWidget {
   final String mealType;
   final FoodEntry? existingEntry;
 
-  const AddFoodScreen({
-    super.key,
-    required this.mealType,
-    this.existingEntry,
-  });
+  const AddFoodScreen({super.key, required this.mealType, this.existingEntry});
 
   @override
   State<AddFoodScreen> createState() => _AddFoodScreenState();
@@ -30,7 +28,8 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
   final _proteinController = TextEditingController();
   final _carbsController = TextEditingController();
   final _fatController = TextEditingController();
-  
+  final _ttsService = TtsService();
+
   String _servingUnit = 'g';
   List<FoodItem> _allFoods = [];
   List<FoodItem> _searchResults = [];
@@ -39,9 +38,16 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
   bool _showSearchResults = false;
   bool _isManualEntry = false;
 
+  // AI Feedback
+  final _geminiService = GeminiService();
+  Timer? _aiDebounce;
+  Map<String, dynamic>? _aiFeedback;
+  bool _isAiLoading = false;
+
   @override
   void initState() {
     super.initState();
+    _ttsService.initialize();
     _loadFoodData();
     if (widget.existingEntry != null) {
       _populateExistingEntry();
@@ -52,16 +58,15 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
   Future<void> _loadFoodData() async {
     setState(() => _isLoading = true);
     try {
-      final foods = await FoodDataLoader.loadFoodItems(); // Fixed method name
+      final foods = await FoodDataLoader.loadFoodItems();
       setState(() {
         _allFoods = foods;
         _isLoading = false;
       });
     } catch (e) {
-      // print('Error loading food data: $e');
       setState(() {
         _isLoading = false;
-        _isManualEntry = true; // Fallback to manual entry if loading fails
+        _isManualEntry = true;
       });
     }
   }
@@ -79,7 +84,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
 
   void _onSearchChanged() {
     final query = _searchController.text.trim().toLowerCase();
-    
+
     if (query.isEmpty) {
       setState(() {
         _searchResults = [];
@@ -90,12 +95,50 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     }
 
     setState(() {
-      _searchResults = _allFoods.where((food) {
-        final nameMatch = food.name.toLowerCase().contains(query);
-        final categoryMatch = food.category?.toLowerCase().contains(query) ?? false;
-        return nameMatch || categoryMatch;
-      }).take(10).toList();
+      _searchResults = _allFoods
+          .where((food) {
+            final nameMatch = food.name.toLowerCase().contains(query);
+            final categoryMatch =
+                food.category?.toLowerCase().contains(query) ?? false;
+            return nameMatch || categoryMatch;
+          })
+          .take(10)
+          .toList();
       _showSearchResults = _searchResults.isNotEmpty;
+    });
+
+    if (_searchResults.isEmpty) {
+      _triggerAiAnalysis();
+    }
+  }
+
+  void _triggerAiAnalysis() {
+    if (_aiDebounce?.isActive ?? false) _aiDebounce!.cancel();
+
+    _aiDebounce = Timer(const Duration(milliseconds: 1500), () async {
+      if (_searchController.text.isEmpty || _caloriesController.text.isEmpty)
+        return;
+
+      setState(() => _isAiLoading = true);
+
+      final profile = await StorageHelper.getUserProfile();
+      if (profile == null) return;
+
+      final feedback = await _geminiService.analyzeFoodEntry(
+        profile: profile,
+        foodName: _searchController.text,
+        calories: double.tryParse(_caloriesController.text) ?? 0,
+        protein: double.tryParse(_proteinController.text) ?? 0,
+        carbs: double.tryParse(_carbsController.text) ?? 0,
+        fat: double.tryParse(_fatController.text) ?? 0,
+      );
+
+      if (mounted) {
+        setState(() {
+          _aiFeedback = feedback;
+          _isAiLoading = false;
+        });
+      }
     });
   }
 
@@ -106,8 +149,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
       _showSearchResults = false;
       _isManualEntry = false;
     });
-    
-    // Calculate nutrients for current serving size
+
     _calculateNutrients();
   }
 
@@ -115,14 +157,21 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     if (_selectedFood == null) return;
 
     final servingSize = double.tryParse(_servingSizeController.text) ?? 100;
-    final multiplier = servingSize / 100; // Food data is per 100g
+    final multiplier = servingSize / 100;
 
     setState(() {
-      _caloriesController.text = (_selectedFood!.calories * multiplier).toStringAsFixed(1);
-      _proteinController.text = (_selectedFood!.protein * multiplier).toStringAsFixed(1);
-      _carbsController.text = (_selectedFood!.carbs * multiplier).toStringAsFixed(1);
-      _fatController.text = (_selectedFood!.fat * multiplier).toStringAsFixed(1);
+      _caloriesController.text = (_selectedFood!.calories * multiplier)
+          .toStringAsFixed(1);
+      _proteinController.text = (_selectedFood!.protein * multiplier)
+          .toStringAsFixed(1);
+      _carbsController.text = (_selectedFood!.carbs * multiplier)
+          .toStringAsFixed(1);
+      _fatController.text = (_selectedFood!.fat * multiplier).toStringAsFixed(
+        1,
+      );
     });
+
+    _triggerAiAnalysis();
   }
 
   void _switchToManualEntry() {
@@ -147,15 +196,14 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     _carbsController.dispose();
     _fatController.dispose();
     _servingSizeController.dispose();
+    _ttsService.stop();
     super.dispose();
   }
 
   Future<void> _openFoodScanner() async {
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
-      MaterialPageRoute(
-        builder: (context) => const FoodScannerScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const FoodScannerScreen()),
     );
 
     if (result != null && mounted) {
@@ -168,7 +216,6 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
 
   Future<void> _saveFood() async {
     if (_formKey.currentState!.validate()) {
-      // Create food item for health check
       final foodItem = FoodItem(
         foodCode: 'manual_entry',
         foodName: _searchController.text.trim(),
@@ -180,7 +227,6 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
 
       final servingSize = double.parse(_servingSizeController.text);
 
-      // Get user profile and check for health alerts
       final profile = await StorageHelper.getUserProfile();
       final alerts = HealthAlertService.checkFoodAlerts(
         foodItem,
@@ -188,20 +234,19 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
         servingSize,
       );
 
-      // If there are danger alerts, show warning dialog
       if (alerts.any((alert) => alert.severity == HealthAlertSeverity.danger)) {
         final shouldContinue = await _showHealthAlertDialog(alerts);
         if (!shouldContinue) {
-          return; // User chose not to add this food
+          return;
         }
       } else if (alerts.isNotEmpty) {
-        // Show warning alerts but allow saving
         await _showHealthWarningDialog(alerts);
       }
 
-      // Create entry and save
       final entry = FoodEntry(
-        id: widget.existingEntry?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        id:
+            widget.existingEntry?.id ??
+            DateTime.now().millisecondsSinceEpoch.toString(),
         name: _searchController.text.trim(),
         calories: double.parse(_caloriesController.text),
         protein: double.parse(_proteinController.text),
@@ -225,103 +270,138 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     }
   }
 
+  String _formatAlertForSpeech(HealthAlert alert) {
+    String cleanTitle = alert.title.replaceAll(RegExp(r'[^\w\s]'), '');
+    String cleanMessage = alert.message.replaceAll(RegExp(r'[^\w\s.,!?]'), '');
+    return '$cleanTitle. $cleanMessage';
+  }
+
   Future<bool> _showHealthAlertDialog(List<HealthAlert> alerts) async {
-    final dangerAlerts = alerts.where((a) => a.severity == HealthAlertSeverity.danger).toList();
-    
+    final dangerAlerts = alerts
+        .where((a) => a.severity == HealthAlertSeverity.danger)
+        .toList();
+
+    if (dangerAlerts.isNotEmpty) {
+      final speechText = _formatAlertForSpeech(dangerAlerts.first);
+      await _ttsService.speak(speechText);
+    }
+
     return await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 48),
-        title: const Text(
-          '⚠️ Health Warning',
-          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'This food may not be suitable for your health conditions:',
-                style: TextStyle(fontWeight: FontWeight.w600),
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            icon: const Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.red,
+              size: 48,
+            ),
+            title: const Text(
+              '⚠️ Health Warning',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'This food may not be suitable for your health conditions:',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 16),
+                  ...dangerAlerts.map(
+                    (alert) => Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            alert.title,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red.shade900,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            alert.message,
+                            style: TextStyle(color: Colors.red.shade800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.orange.shade700,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Consider consulting your doctor before consuming this food.',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              ...dangerAlerts.map((alert) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade200),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  _ttsService.stop();
+                  Navigator.pop(context, false);
+                },
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      alert.title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red.shade900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      alert.message,
-                      style: TextStyle(color: Colors.red.shade800),
-                    ),
-                  ],
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  _ttsService.stop();
+                  Navigator.pop(context, true);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
                 ),
-              )),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Consider consulting your doctor before consuming this food.',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
+                child: const Text(
+                  'Add Anyway',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text(
-              'Add Anyway',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
   }
 
   Future<void> _showHealthWarningDialog(List<HealthAlert> alerts) async {
+    if (alerts.isNotEmpty) {
+      final speechText = _formatAlertForSpeech(alerts.first);
+      await _ttsService.speak(speechText);
+    }
+
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -340,38 +420,43 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 16),
-              ...alerts.map((alert) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      alert.title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade900,
+              ...alerts.map(
+                (alert) => Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        alert.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange.shade900,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      alert.message,
-                      style: TextStyle(color: Colors.orange.shade800),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        alert.message,
+                        style: TextStyle(color: Colors.orange.shade800),
+                      ),
+                    ],
+                  ),
                 ),
-              )),
+              ),
             ],
           ),
         ),
         actions: [
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              _ttsService.stop();
+              Navigator.pop(context);
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
               foregroundColor: Colors.white,
@@ -406,7 +491,10 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
               icon: const Icon(Icons.edit, color: Colors.white, size: 18),
               label: const Text(
                 'Manual',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           TextButton(
@@ -454,8 +542,12 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                         _buildNutritionalInfo(),
                       ],
                       const SizedBox(height: 24),
-                      if (!_isManualEntry && _selectedFood == null && _allFoods.isNotEmpty)
+                      if (!_isManualEntry &&
+                          _selectedFood == null &&
+                          _allFoods.isNotEmpty)
                         _buildQuickAddButtons(),
+                      const SizedBox(height: 16),
+                      _buildAiFeedbackBubble(),
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -484,7 +576,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
 
   Widget _buildMealTypeChip() {
     final mealTypeInfo = _getMealTypeInfo(widget.mealType);
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -524,32 +616,28 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
         return {
           'name': 'Breakfast',
           'icon': Icons.wb_sunny_rounded,
-          'color': const Color(0xFFFFBE0B)
+          'color': const Color(0xFFFFBE0B),
         };
       case 'lunch':
         return {
           'name': 'Lunch',
           'icon': Icons.lunch_dining_rounded,
-          'color': const Color(0xFF4ECDC4)
+          'color': const Color(0xFF4ECDC4),
         };
       case 'dinner':
         return {
           'name': 'Dinner',
           'icon': Icons.dinner_dining_rounded,
-          'color': const Color(0xFF45B7D1)
+          'color': const Color(0xFF45B7D1),
         };
       case 'snack':
         return {
           'name': 'Snack',
           'icon': Icons.cookie_rounded,
-          'color': const Color(0xFFFF006E)
+          'color': const Color(0xFFFF006E),
         };
       default:
-        return {
-          'name': 'Meal',
-          'icon': Icons.restaurant,
-          'color': Colors.grey
-        };
+        return {'name': 'Meal', 'icon': Icons.restaurant, 'color': Colors.grey};
     }
   }
 
@@ -571,7 +659,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
         TextFormField(
           controller: _searchController,
           decoration: InputDecoration(
-            hintText: _allFoods.isEmpty 
+            hintText: _allFoods.isEmpty
                 ? 'Enter food name manually...'
                 : 'Type to search from ${_allFoods.length} foods...',
             prefixIcon: Icon(Icons.restaurant_menu, color: _getMealTypeColor()),
@@ -587,9 +675,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                     },
                   )
                 : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(color: _getMealTypeColor(), width: 2),
@@ -638,7 +724,11 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                     color: _getMealTypeColor().withAlpha(26),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.fastfood, color: _getMealTypeColor(), size: 20),
+                  child: Icon(
+                    Icons.fastfood,
+                    color: _getMealTypeColor(),
+                    size: 20,
+                  ),
                 ),
                 title: Text(
                   food.name,
@@ -648,10 +738,16 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                   'Per 100g: ${food.calories.toInt()} kcal • P: ${food.protein.toInt()}g C: ${food.carbs.toInt()}g F: ${food.fat.toInt()}g',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withAlpha(153),
                   ),
                 ),
-                trailing: Icon(Icons.arrow_forward_ios, size: 16, color: _getMealTypeColor()),
+                trailing: Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: _getMealTypeColor(),
+                ),
                 onTap: () => _selectFood(food),
               );
             },
@@ -711,10 +807,26 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _buildNutrientChip('${_selectedFood!.calories.toInt()} kcal', Icons.local_fire_department, Colors.orange),
-                _buildNutrientChip('P: ${_selectedFood!.protein.toInt()}g', Icons.fitness_center, Colors.blue),
-                _buildNutrientChip('C: ${_selectedFood!.carbs.toInt()}g', Icons.grain, Colors.amber),
-                _buildNutrientChip('F: ${_selectedFood!.fat.toInt()}g', Icons.opacity, Colors.purple),
+                _buildNutrientChip(
+                  '${_selectedFood!.calories.toInt()} kcal',
+                  Icons.local_fire_department,
+                  Colors.orange,
+                ),
+                _buildNutrientChip(
+                  'P: ${_selectedFood!.protein.toInt()}g',
+                  Icons.fitness_center,
+                  Colors.blue,
+                ),
+                _buildNutrientChip(
+                  'C: ${_selectedFood!.carbs.toInt()}g',
+                  Icons.grain,
+                  Colors.amber,
+                ),
+                _buildNutrientChip(
+                  'F: ${_selectedFood!.fat.toInt()}g',
+                  Icons.opacity,
+                  Colors.purple,
+                ),
               ],
             ),
           ],
@@ -772,11 +884,15 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                 controller: _servingSizeController,
                 decoration: InputDecoration(
                   labelText: 'Amount',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   filled: true,
                   fillColor: Theme.of(context).cardColor,
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                 ],
@@ -795,15 +911,20 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: DropdownButtonFormField<String>(
-                initialValue: _servingUnit,
+                value: _servingUnit,
                 decoration: InputDecoration(
                   labelText: 'Unit',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   filled: true,
                   fillColor: Theme.of(context).cardColor,
                 ),
                 items: ['g', 'ml', 'oz', 'cup', 'piece', 'serving']
-                    .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
+                    .map(
+                      (unit) =>
+                          DropdownMenuItem(value: unit, child: Text(unit)),
+                    )
                     .toList(),
                 onChanged: (value) {
                   setState(() => _servingUnit = value!);
@@ -838,6 +959,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
           suffix: 'kcal',
           color: Colors.orange,
           readOnly: !_isManualEntry,
+          onChanged: (val) => _triggerAiAnalysis(),
         ),
         const SizedBox(height: 16),
         Row(
@@ -850,6 +972,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                 suffix: 'g',
                 color: Colors.blue,
                 readOnly: !_isManualEntry,
+                onChanged: (val) => _triggerAiAnalysis(),
               ),
             ),
             const SizedBox(width: 12),
@@ -861,6 +984,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                 suffix: 'g',
                 color: Colors.amber,
                 readOnly: !_isManualEntry,
+                onChanged: (val) => _triggerAiAnalysis(),
               ),
             ),
           ],
@@ -873,6 +997,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
           suffix: 'g',
           color: Colors.purple,
           readOnly: !_isManualEntry,
+          onChanged: (val) => _triggerAiAnalysis(),
         ),
       ],
     );
@@ -885,6 +1010,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     required String suffix,
     required Color color,
     bool readOnly = false,
+    ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
       controller: controller,
@@ -895,9 +1021,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
         suffixText: suffix,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: readOnly 
-            ? color.withAlpha(13) 
-            : Theme.of(context).cardColor,
+        fillColor: readOnly ? color.withAlpha(13) : Theme.of(context).cardColor,
       ),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
@@ -912,15 +1036,18 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
   }
 
   Widget _buildQuickAddButtons() {
-    final commonFoods = _allFoods.where((food) {
-      final name = food.name.toLowerCase();
-      return name.contains('banana') ||
-          name.contains('apple') ||
-          name.contains('egg') ||
-          name.contains('chicken') ||
-          name.contains('rice') ||
-          name.contains('milk');
-    }).take(6).toList();
+    final commonFoods = _allFoods
+        .where((food) {
+          final name = food.name.toLowerCase();
+          return name.contains('banana') ||
+              name.contains('apple') ||
+              name.contains('egg') ||
+              name.contains('chicken') ||
+              name.contains('rice') ||
+              name.contains('milk');
+        })
+        .take(6)
+        .toList();
 
     if (commonFoods.isEmpty) return const SizedBox.shrink();
 
@@ -944,7 +1071,11 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
           children: commonFoods.map((food) {
             return ActionChip(
               label: Text(food.name),
-              avatar: Icon(Icons.flash_on, size: 16, color: _getMealTypeColor()),
+              avatar: Icon(
+                Icons.flash_on,
+                size: 16,
+                color: _getMealTypeColor(),
+              ),
               backgroundColor: _getMealTypeColor().withAlpha(26),
               side: BorderSide(color: _getMealTypeColor().withAlpha(77)),
               onPressed: () => _selectFood(food),
@@ -952,6 +1083,101 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
           }).toList(),
         ),
       ],
+    );
+  }
+
+  Widget _buildAiFeedbackBubble() {
+    if (_isAiLoading) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.purple.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.purple.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.purple,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Gemini is analyzing...',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.purple.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_aiFeedback == null) return const SizedBox.shrink();
+
+    final isGood = _aiFeedback!['isGood'] ?? true;
+    final message = _aiFeedback!['message'] ?? '';
+    final suggestion = _aiFeedback!['suggestion'];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: (isGood ? Colors.green : Colors.orange).withOpacity(0.07),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: (isGood ? Colors.green : Colors.orange).withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isGood ? Icons.check_circle_outline : Icons.lightbulb_outline,
+                color: isGood ? Colors.green : Colors.orange,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                isGood ? 'AI Approval' : 'AI Tip',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isGood
+                      ? Colors.green.shade700
+                      : Colors.orange.shade800,
+                ),
+              ),
+              const Spacer(),
+              const Icon(
+                Icons.psychology_outlined,
+                size: 16,
+                color: Colors.purple,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(message, style: const TextStyle(fontSize: 13, height: 1.4)),
+          if (suggestion != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Tip: $suggestion',
+              style: TextStyle(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

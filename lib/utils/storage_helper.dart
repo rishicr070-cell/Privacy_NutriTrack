@@ -23,20 +23,20 @@ class StorageHelper {
   static Future<void> init() async {
     try {
       print('Initializing storage systems...');
-      
+
       if (kIsWeb) {
         print('Running on Web - Using browser localStorage directly');
         final webKeys = WebStorage.getKeys();
         print('Stored keys in localStorage: $webKeys');
       }
-      
+
       _prefs = await SharedPreferences.getInstance();
       print('SharedPreferences initialized successfully');
-      
+
       // Print all stored keys for debugging
       final keys = _prefs!.getKeys();
       print('SharedPreferences keys: $keys');
-      
+
       if (!_useSharedPrefsOnly) {
         try {
           _db = DatabaseHelper();
@@ -45,7 +45,7 @@ class StorageHelper {
           _useSharedPrefsOnly = true;
         }
       }
-      
+
       print('Storage systems initialized (Web mode: $_useSharedPrefsOnly)');
     } catch (e) {
       print('Storage initialization error: $e');
@@ -94,7 +94,7 @@ class StorageHelper {
     try {
       if (_useSharedPrefsOnly) {
         String? jsonString;
-        
+
         if (kIsWeb) {
           // Use WebStorage for web
           jsonString = WebStorage.getString('user_profile');
@@ -105,11 +105,13 @@ class StorageHelper {
           }
           jsonString = _prefs!.getString('user_profile');
         }
-        
-        print('Retrieved profile JSON: ${jsonString != null ? "Found (${jsonString.length} chars)" : "null"}');
-        
+
+        print(
+          'Retrieved profile JSON: ${jsonString != null ? "Found (${jsonString.length} chars)" : "null"}',
+        );
+
         if (jsonString == null) return null;
-        
+
         final profileData = jsonDecode(jsonString);
         final profile = UserProfile.fromJson(profileData);
         print('Successfully decoded profile for: ${profile.name}');
@@ -125,38 +127,44 @@ class StorageHelper {
   static Future<void> saveUserProfile(UserProfile profile) async {
     try {
       print('Saving profile (Web mode: $_useSharedPrefsOnly)');
-      
+
       if (_useSharedPrefsOnly) {
         final jsonString = jsonEncode(profile.toJson());
-        print('Encoded profile JSON: ${jsonString.substring(0, jsonString.length > 100 ? 100 : jsonString.length)}...');
-        
+        print(
+          'Encoded profile JSON: ${jsonString.substring(0, jsonString.length > 100 ? 100 : jsonString.length)}...',
+        );
+
         if (kIsWeb) {
           // Use WebStorage for web (browser localStorage)
           WebStorage.setString('user_profile', jsonString);
           print('Profile saved to WebStorage (localStorage)');
-          
+
           // Verify it was saved
           final verification = WebStorage.getString('user_profile');
-          print('Immediate verification: ${verification != null ? "Data found in localStorage" : "Data NOT found"}');
+          print(
+            'Immediate verification: ${verification != null ? "Data found in localStorage" : "Data NOT found"}',
+          );
         } else {
           if (_prefs == null) {
             throw Exception('SharedPreferences not initialized');
           }
-          
+
           final success = await _prefs!.setString('user_profile', jsonString);
           print('Profile saved to SharedPreferences: success=$success');
-          
+
           if (!success) {
             throw Exception('SharedPreferences.setString returned false');
           }
-          
+
           // Force commit
           await _prefs!.reload();
           print('SharedPreferences reloaded after save');
-          
+
           // Verify it was saved
           final verification = _prefs!.getString('user_profile');
-          print('Immediate verification: ${verification != null ? "Data found" : "Data NOT found"}');
+          print(
+            'Immediate verification: ${verification != null ? "Data found" : "Data NOT found"}',
+          );
         }
       } else {
         await _db?.saveUserProfile(profile);
@@ -174,15 +182,15 @@ class StorageHelper {
     try {
       if (_useSharedPrefsOnly) {
         String? jsonString;
-        
+
         if (kIsWeb) {
           jsonString = WebStorage.getString('food_entries');
         } else {
           jsonString = _prefs?.getString('food_entries');
         }
-        
+
         if (jsonString == null) return [];
-        
+
         final List<dynamic> jsonList = jsonDecode(jsonString);
         return jsonList.map((json) => FoodEntry.fromJson(json)).toList();
       }
@@ -201,7 +209,8 @@ class StorageHelper {
       if (_useSharedPrefsOnly) {
         final entries = await getFoodEntries();
         return entries.where((entry) {
-          return entry.timestamp.isAfter(start) && entry.timestamp.isBefore(end);
+          return entry.timestamp.isAfter(start) &&
+              entry.timestamp.isBefore(end);
         }).toList();
       }
       return await _db?.getFoodEntriesByDateRange(start, end) ?? [];
@@ -217,7 +226,7 @@ class StorageHelper {
         final entries = await getFoodEntries();
         entries.add(entry);
         final jsonString = jsonEncode(entries.map((e) => e.toJson()).toList());
-        
+
         if (kIsWeb) {
           WebStorage.setString('food_entries', jsonString);
         } else {
@@ -237,7 +246,7 @@ class StorageHelper {
         final entries = await getFoodEntries();
         entries.removeWhere((entry) => entry.id == id);
         final jsonString = jsonEncode(entries.map((e) => e.toJson()).toList());
-        
+
         if (kIsWeb) {
           WebStorage.setString('food_entries', jsonString);
         } else {
@@ -258,8 +267,10 @@ class StorageHelper {
         final index = entries.indexWhere((e) => e.id == entry.id);
         if (index != -1) {
           entries[index] = entry;
-          final jsonString = jsonEncode(entries.map((e) => e.toJson()).toList());
-          
+          final jsonString = jsonEncode(
+            entries.map((e) => e.toJson()).toList(),
+          );
+
           if (kIsWeb) {
             WebStorage.setString('food_entries', jsonString);
           } else {
@@ -280,13 +291,13 @@ class StorageHelper {
     try {
       if (_useSharedPrefsOnly) {
         String? jsonString;
-        
+
         if (kIsWeb) {
           jsonString = WebStorage.getString('water_intake');
         } else {
           jsonString = _prefs?.getString('water_intake');
         }
-        
+
         if (jsonString == null) return {};
         return Map<String, int>.from(jsonDecode(jsonString));
       }
@@ -303,7 +314,7 @@ class StorageHelper {
         final waterData = await getWaterIntake();
         waterData[date] = amount;
         final jsonString = jsonEncode(waterData);
-        
+
         if (kIsWeb) {
           WebStorage.setString('water_intake', jsonString);
         } else {
@@ -323,13 +334,13 @@ class StorageHelper {
     try {
       if (_useSharedPrefsOnly) {
         String? jsonString;
-        
+
         if (kIsWeb) {
           jsonString = WebStorage.getString('weight_data');
         } else {
           jsonString = _prefs?.getString('weight_data');
         }
-        
+
         if (jsonString == null) return {};
         return Map<String, double>.from(jsonDecode(jsonString));
       }
@@ -346,7 +357,7 @@ class StorageHelper {
         final weightData = await getWeightData();
         weightData[date] = weight;
         final jsonString = jsonEncode(weightData);
-        
+
         if (kIsWeb) {
           WebStorage.setString('weight_data', jsonString);
         } else {
@@ -424,6 +435,55 @@ class StorageHelper {
     }
   }
 
+  // ==================== GEMINI API KEY ====================
+
+  static Future<String?> getGeminiApiKey() async {
+    try {
+      if (_useSharedPrefsOnly) {
+        if (kIsWeb) {
+          return WebStorage.getString('gemini_api_key');
+        }
+        return _prefs?.getString('gemini_api_key');
+      }
+      return await _secure.getGeminiApiKey();
+    } catch (e) {
+      print('Error reading Gemini API Key: $e');
+      return null;
+    }
+  }
+
+  static Future<void> saveGeminiApiKey(String apiKey) async {
+    try {
+      if (_useSharedPrefsOnly) {
+        if (kIsWeb) {
+          WebStorage.setString('gemini_api_key', apiKey);
+        } else {
+          await _prefs?.setString('gemini_api_key', apiKey);
+        }
+      } else {
+        await _secure.saveGeminiApiKey(apiKey);
+      }
+    } catch (e) {
+      print('Error saving Gemini API Key: $e');
+    }
+  }
+
+  static Future<void> deleteGeminiApiKey() async {
+    try {
+      if (_useSharedPrefsOnly) {
+        if (kIsWeb) {
+          WebStorage.remove('gemini_api_key');
+        } else {
+          await _prefs?.remove('gemini_api_key');
+        }
+      } else {
+        await _secure.deleteGeminiApiKey();
+      }
+    } catch (e) {
+      print('Error deleting Gemini API Key: $e');
+    }
+  }
+
   // ==================== DATA MANAGEMENT ====================
 
   static Future<void> clearAllData() async {
@@ -451,7 +511,7 @@ class StorageHelper {
         final entries = await getFoodEntries();
         final waterData = await getWaterIntake();
         final weightData = await getWeightData();
-        
+
         return {
           'food_entries': entries.length,
           'water_records': waterData.length,
@@ -481,13 +541,13 @@ class StorageHelper {
     try {
       if (_useSharedPrefsOnly) {
         int? timestamp;
-        
+
         if (kIsWeb) {
           timestamp = WebStorage.getInt('last_backup_time');
         } else {
           timestamp = _prefs?.getInt('last_backup_time');
         }
-        
+
         if (timestamp == null) return null;
         return DateTime.fromMillisecondsSinceEpoch(timestamp);
       }
@@ -502,9 +562,15 @@ class StorageHelper {
     try {
       if (_useSharedPrefsOnly) {
         if (kIsWeb) {
-          WebStorage.setInt('last_backup_time', timestamp.millisecondsSinceEpoch);
+          WebStorage.setInt(
+            'last_backup_time',
+            timestamp.millisecondsSinceEpoch,
+          );
         } else {
-          await _prefs?.setInt('last_backup_time', timestamp.millisecondsSinceEpoch);
+          await _prefs?.setInt(
+            'last_backup_time',
+            timestamp.millisecondsSinceEpoch,
+          );
         }
       } else {
         await _secure.saveLastBackupTime(timestamp);
@@ -519,16 +585,18 @@ class StorageHelper {
   static Future<void> printStorageStats() async {
     try {
       print('=== Storage Statistics ===');
-      print('Platform: ${_useSharedPrefsOnly ? "Web (SharedPreferences)" : "Native (SQLite)"}');
-      
+      print(
+        'Platform: ${_useSharedPrefsOnly ? "Web (SharedPreferences)" : "Native (SQLite)"}',
+      );
+
       final stats = await getDatabaseStats();
       print('Food entries: ${stats['food_entries']}');
       print('Water records: ${stats['water_records']}');
       print('Weight records: ${stats['weight_records']}');
-      
+
       final profile = await getUserProfile();
       print('User profile: ${profile != null ? 'exists' : 'not set'}');
-      
+
       final isDark = await isDarkMode();
       print('Dark mode: $isDark');
       print('========================');

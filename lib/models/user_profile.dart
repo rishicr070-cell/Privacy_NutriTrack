@@ -13,6 +13,7 @@ class UserProfile {
   final double dailyWaterGoal; // in ml
   final List<String> healthConditions; // New field for diseases/conditions
   final List<String> allergies; // New field for food allergies
+  final String goalType; // 'weight_loss', 'weight_gain', 'maintenance'
 
   UserProfile({
     required this.name,
@@ -29,6 +30,7 @@ class UserProfile {
     required this.dailyWaterGoal,
     this.healthConditions = const [],
     this.allergies = const [],
+    this.goalType = 'maintenance',
   });
 
   Map<String, dynamic> toJson() {
@@ -47,6 +49,7 @@ class UserProfile {
       'dailyWaterGoal': dailyWaterGoal,
       'healthConditions': healthConditions,
       'allergies': allergies,
+      'goalType': goalType,
     };
   }
 
@@ -64,12 +67,13 @@ class UserProfile {
       dailyCarbsGoal: json['dailyCarbsGoal'].toDouble(),
       dailyFatGoal: json['dailyFatGoal'].toDouble(),
       dailyWaterGoal: json['dailyWaterGoal'].toDouble(),
-      healthConditions: json['healthConditions'] != null 
+      healthConditions: json['healthConditions'] != null
           ? List<String>.from(json['healthConditions'])
           : [],
-      allergies: json['allergies'] != null 
+      allergies: json['allergies'] != null
           ? List<String>.from(json['allergies'])
           : [],
+      goalType: json['goalType'] ?? 'maintenance',
     );
   }
 
@@ -88,6 +92,7 @@ class UserProfile {
     double? dailyWaterGoal,
     List<String>? healthConditions,
     List<String>? allergies,
+    String? goalType,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -104,6 +109,7 @@ class UserProfile {
       dailyWaterGoal: dailyWaterGoal ?? this.dailyWaterGoal,
       healthConditions: healthConditions ?? this.healthConditions,
       allergies: allergies ?? this.allergies,
+      goalType: goalType ?? this.goalType,
     );
   }
 
@@ -114,5 +120,28 @@ class UserProfile {
     if (bmi < 25) return 'Normal';
     if (bmi < 30) return 'Overweight';
     return 'Obese';
+  }
+
+  // Auto-detect goal type based on current vs target weight
+  String get autoGoalType {
+    final weightDiff = currentWeight - targetWeight;
+    if (weightDiff > 2) return 'weight_loss';
+    if (weightDiff < -2) return 'weight_gain';
+    return 'maintenance';
+  }
+
+  // Get weight difference in kg
+  double get weightDifference => (currentWeight - targetWeight).abs();
+
+  // Get goal description
+  String get goalDescription {
+    switch (autoGoalType) {
+      case 'weight_loss':
+        return 'Lose ${weightDifference.toStringAsFixed(1)}kg';
+      case 'weight_gain':
+        return 'Gain ${weightDifference.toStringAsFixed(1)}kg';
+      default:
+        return 'Maintain weight';
+    }
   }
 }

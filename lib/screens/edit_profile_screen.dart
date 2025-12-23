@@ -19,16 +19,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _heightController = TextEditingController();
   final _currentWeightController = TextEditingController();
   final _targetWeightController = TextEditingController();
-  
+
   String _gender = 'male';
   String _activityLevel = 'moderate';
-  
+
   // Fixed: Set proper default values within slider ranges
   double _dailyCalorieGoal = 2000;
   double _dailyProteinGoal = 150;
   double _dailyCarbsGoal = 200;
   double _dailyFatGoal = 65;
   double _dailyWaterGoal = 2000;
+
+  // Calculation info
+  double _calculatedTDEE = 0;
+  double _calorieAdjustment = 0;
+  String _detectedGoalType = 'maintenance';
 
   @override
   void initState() {
@@ -59,8 +64,59 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  String _determineGoalType() {
+    if (_currentWeightController.text.isEmpty ||
+        _targetWeightController.text.isEmpty) {
+      return 'maintenance';
+    }
+
+    final current = double.parse(_currentWeightController.text);
+    final target = double.parse(_targetWeightController.text);
+    final diff = current - target;
+
+    if (diff > 2) return 'weight_loss';
+    if (diff < -2) return 'weight_gain';
+    return 'maintenance';
+  }
+
+  double _getCalorieAdjustment(String goalType) {
+    switch (goalType) {
+      case 'weight_loss':
+        return -500; // Safe deficit for 0.5kg/week loss
+      case 'weight_gain':
+        return 400; // Healthy surplus for muscle gain
+      default:
+        return 0; // Maintenance
+    }
+  }
+
+  double _getProteinTarget(double weight, String goalType) {
+    switch (goalType) {
+      case 'weight_loss':
+        return weight * 2.2; // Higher protein to preserve muscle
+      case 'weight_gain':
+        return weight * 2.0; // High protein for muscle building
+      default:
+        return weight * 1.8; // Moderate protein for maintenance
+    }
+  }
+
+  Map<String, double> _getMacroRatios(String goalType) {
+    switch (goalType) {
+      case 'weight_loss':
+        return {'carbs': 0.35, 'fat': 0.30}; // Lower carbs, moderate fat
+      case 'weight_gain':
+        return {'carbs': 0.45, 'fat': 0.25}; // Higher carbs for energy
+      default:
+        return {'carbs': 0.40, 'fat': 0.30}; // Balanced
+    }
+  }
+
   void _calculateMacros() {
-    if (_currentWeightController.text.isEmpty || _heightController.text.isEmpty || _ageController.text.isEmpty) {
+    if (_currentWeightController.text.isEmpty ||
+        _heightController.text.isEmpty ||
+        _ageController.text.isEmpty ||
+        _targetWeightController.text.isEmpty) {
       return;
     }
 
@@ -100,11 +156,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     final tdee = bmr * activityMultiplier;
 
+    // Determine goal type and get adjustments
+    final goalType = _determineGoalType();
+    final calorieAdjustment = _getCalorieAdjustment(goalType);
+    final proteinTarget = _getProteinTarget(weight, goalType);
+    final macroRatios = _getMacroRatios(goalType);
+
+    // Calculate adjusted calories
+    double adjustedCalories = tdee + calorieAdjustment;
+
+    // Apply safety limits
+    final minCalories = _gender == 'male' ? 1500.0 : 1200.0;
+    adjustedCalories = adjustedCalories.clamp(minCalories, 3500.0);
+
+    // Calculate macros
+    final protein = proteinTarget.clamp(50.0, 300.0);
+    final proteinCalories = protein * 4;
+    final remainingCalories = adjustedCalories - proteinCalories;
+
+    final carbsCalories = remainingCalories * macroRatios['carbs']!;
+    final fatCalories = remainingCalories * macroRatios['fat']!;
+
+    final carbs = (carbsCalories / 4).clamp(50.0, 400.0);
+    final fat = (fatCalories / 9).clamp(20.0, 150.0);
+
     setState(() {
-      _dailyCalorieGoal = tdee.roundToDouble().clamp(1200, 3500);
-      _dailyProteinGoal = (weight * 2).roundToDouble().clamp(50, 300);
-      _dailyCarbsGoal = ((tdee * 0.4) / 4).roundToDouble().clamp(50, 400);
-      _dailyFatGoal = ((tdee * 0.3) / 9).roundToDouble().clamp(20, 150);
+      _calculatedTDEE = tdee;
+      _calorieAdjustment = calorieAdjustment;
+      _detectedGoalType = goalType;
+      _dailyCalorieGoal = adjustedCalories.roundToDouble();
+      _dailyProteinGoal = protein.roundToDouble();
+      _dailyCarbsGoal = carbs.roundToDouble();
+      _dailyFatGoal = fat.roundToDouble();
     });
   }
 
@@ -115,15 +198,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         print('Name: ${_nameController.text}');
         print('Age: ${_ageController.text}');
         print('Gender: $_gender');
-        
+
         // Show loading indicator
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (BuildContext context) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           },
         );
 
@@ -143,16 +224,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             dailyWaterGoal: _dailyWaterGoal,
             healthConditions: widget.profile?.healthConditions ?? [],
             allergies: widget.profile?.allergies ?? [],
+            goalType: _detectedGoalType.isNotEmpty
+                ? _detectedGoalType
+                : 'maintenance',
           );
 
           print('Profile object created successfully');
           print('Calling StorageHelper.saveUserProfile...');
           await StorageHelper.saveUserProfile(profile);
           print('StorageHelper.saveUserProfile completed');
-          
+
           // Add a small delay for web platform to ensure data is persisted
           await Future.delayed(const Duration(milliseconds: 100));
-          
+
           // Verify the profile was saved by reading it back
           print('Verifying profile was saved...');
           final savedProfile = await StorageHelper.getUserProfile();
@@ -160,7 +244,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             print('✓ Profile verification successful');
             print('Saved profile name: ${savedProfile.name}');
           } else {
-            print('⚠ Profile verification returned null, but save operation completed');
+            print(
+              '⚠ Profile verification returned null, but save operation completed',
+            );
             print('This can happen on web - the profile should still be saved');
             // Don't throw error - the save likely worked, just verification timing issue
           }
@@ -174,7 +260,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           print('=== ERROR SAVING PROFILE ===');
           print('Error: $e');
           print('Stack trace: $stackTrace');
-          
+
           if (mounted) {
             Navigator.of(context).pop(); // Close loading dialog
             // Show error message
@@ -212,7 +298,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         print('=== UNEXPECTED ERROR ===');
         print('Error: $e');
         print('Stack trace: $stackTrace');
-        
+
         if (mounted) {
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(
@@ -250,7 +336,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             onPressed: _saveProfile,
             child: const Text(
               'Save',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -293,9 +383,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _buildGenderDropdown(),
-                ),
+                Expanded(child: _buildGenderDropdown()),
               ],
             ),
             const SizedBox(height: 24),
@@ -368,6 +456,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ],
             ),
+            if (_calculatedTDEE > 0) ...[
+              const SizedBox(height: 16),
+              _buildCalculationInfoCard(),
+            ],
             const SizedBox(height: 16),
             _buildGoalSlider(
               'Daily Calories',
@@ -441,9 +533,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Theme.of(context).cardColor,
       ),
@@ -465,9 +555,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         labelText: label,
         prefixIcon: Icon(icon),
         suffixText: suffix,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Theme.of(context).cardColor,
       ),
@@ -494,9 +582,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       decoration: InputDecoration(
         labelText: 'Gender',
         prefixIcon: const Icon(Icons.wc),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Theme.of(context).cardColor,
       ),
@@ -553,8 +639,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Row(
                 children: [
                   Icon(
-                    isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                    color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -562,7 +652,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       entry.value,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -587,7 +679,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   ) {
     // Ensure value is within range
     final safeValue = value.clamp(min, max);
-    
+
     return Card(
       elevation: 0,
       child: Padding(
@@ -609,7 +701,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -644,6 +739,142 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCalculationInfoCard() {
+    String goalIcon;
+    String goalLabel;
+    Color goalColor;
+
+    switch (_detectedGoalType) {
+      case 'weight_loss':
+        goalIcon = '📉';
+        goalLabel = 'Weight Loss';
+        goalColor = Colors.orange;
+        break;
+      case 'weight_gain':
+        goalIcon = '📈';
+        goalLabel = 'Weight Gain';
+        goalColor = Colors.green;
+        break;
+      default:
+        goalIcon = '⚖️';
+        goalLabel = 'Maintenance';
+        goalColor = Colors.blue;
+    }
+
+    final current = double.tryParse(_currentWeightController.text) ?? 0;
+    final target = double.tryParse(_targetWeightController.text) ?? 0;
+    final weightDiff = (current - target).abs();
+
+    String expectedChange;
+    if (_detectedGoalType == 'weight_loss') {
+      expectedChange = '-0.5 kg/week';
+    } else if (_detectedGoalType == 'weight_gain') {
+      expectedChange = '+0.3 kg/week';
+    } else {
+      expectedChange = 'Maintain current weight';
+    }
+
+    return Card(
+      elevation: 2,
+      color: goalColor.withOpacity(0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: goalColor.withOpacity(0.3), width: 2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(goalIcon, style: const TextStyle(fontSize: 24)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your Calculated Goals',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: goalColor,
+                        ),
+                      ),
+                      Text(
+                        '$goalLabel (${weightDiff.toStringAsFixed(1)} kg)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            _buildInfoRow(
+              'TDEE',
+              '${_calculatedTDEE.toInt()} kcal',
+              Icons.local_fire_department,
+            ),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+              _calorieAdjustment < 0
+                  ? 'Deficit'
+                  : _calorieAdjustment > 0
+                  ? 'Surplus'
+                  : 'Adjustment',
+              '${_calorieAdjustment > 0 ? '+' : ''}${_calorieAdjustment.toInt()} kcal',
+              _calorieAdjustment < 0
+                  ? Icons.trending_down
+                  : _calorieAdjustment > 0
+                  ? Icons.trending_up
+                  : Icons.remove,
+            ),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+              'Target',
+              '${_dailyCalorieGoal.toInt()} kcal/day',
+              Icons.flag,
+            ),
+            const SizedBox(height: 8),
+            _buildInfoRow('Expected', expectedChange, Icons.timeline),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '$label:',
+          style: TextStyle(
+            fontSize: 14,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }

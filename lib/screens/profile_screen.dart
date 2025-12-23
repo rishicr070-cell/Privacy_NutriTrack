@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/user_profile.dart';
 import '../utils/storage_helper.dart';
 import '../theme/theme_manager.dart';
@@ -20,6 +21,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   UserProfile? _userProfile;
   Map<String, double> _weightData = {};
   bool _isLoading = true;
+  bool _isAiEnabled = false;
+  final TextEditingController _geminiApiKeyController = TextEditingController();
 
   @override
   bool get wantKeepAlive => true;
@@ -33,22 +36,34 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _loadData() async {
     print('=== LOADING PROFILE DATA ===');
     setState(() => _isLoading = true);
-    
+
     try {
       print('Calling StorageHelper.getUserProfile()...');
       final profile = await StorageHelper.getUserProfile();
-      print('Profile loaded: ${profile != null ? "Found profile for ${profile.name}" : "No profile found"}');
-      
+      print(
+        'Profile loaded: ${profile != null ? "Found profile for ${profile.name}" : "No profile found"}',
+      );
+
       print('Calling StorageHelper.getWeightData()...');
       final weightData = await StorageHelper.getWeightData();
       print('Weight data loaded: ${weightData.length} entries');
-      
-      setState(() {
-        _userProfile = profile;
-        _weightData = weightData;
-        _isLoading = false;
-      });
-      
+
+      // Actually let's add a proper one. I'll add getAiEnabled to StorageHelper shortly.
+      // For now, let's just get the key.
+      final apiKey = await StorageHelper.getGeminiApiKey();
+
+      final aiEnabled = apiKey != null && apiKey.isNotEmpty;
+
+      if (mounted) {
+        _geminiApiKeyController.text = apiKey ?? '';
+        setState(() {
+          _userProfile = profile;
+          _weightData = weightData;
+          _isAiEnabled = aiEnabled;
+          _isLoading = false;
+        });
+      }
+
       print('=== PROFILE DATA LOAD COMPLETE ===');
     } catch (e, stackTrace) {
       print('=== ERROR LOADING PROFILE DATA ===');
@@ -56,6 +71,12 @@ class _ProfileScreenState extends State<ProfileScreen>
       print('Stack trace: $stackTrace');
       setState(() => _isLoading = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _geminiApiKeyController.dispose();
+    super.dispose();
   }
 
   Future<void> _navigateToEditProfile() async {
@@ -90,9 +111,20 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  Future<void> _launchApiStudioUrl() async {
+    final url = Uri.parse('https://aistudio.google.com/app/apikey');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch AI Studio link')),
+        );
+      }
+    }
+  }
+
   Future<void> _showWeightDialog() async {
     final controller = TextEditingController();
-    
+
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -117,14 +149,14 @@ class _ProfileScreenState extends State<ProfileScreen>
               if (weight != null) {
                 final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
                 await StorageHelper.saveWeight(today, weight);
-                
+
                 if (_userProfile != null) {
                   final updatedProfile = _userProfile!.copyWith(
                     currentWeight: weight,
                   );
                   await StorageHelper.saveUserProfile(updatedProfile);
                 }
-                
+
                 if (!mounted) return;
                 Navigator.pop(context);
                 _loadData();
@@ -153,9 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete'),
           ),
         ],
@@ -178,7 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     return Scaffold(
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -335,7 +365,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                     '${_userProfile!.age} years • ${_userProfile!.gender}',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.6),
                     ),
                   ),
                 ],
@@ -345,7 +377,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               onPressed: _navigateToEditProfile,
               icon: const Icon(Icons.edit),
               style: IconButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withOpacity(0.1),
               ),
             ),
           ],
@@ -357,7 +391,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildStatsGrid() {
     final bmi = _userProfile!.bmi;
     final weightDiff = _userProfile!.currentWeight - _userProfile!.targetWeight;
-    
+
     return Column(
       children: [
         Row(
@@ -453,7 +487,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                 subtitle,
                 style: TextStyle(
                   fontSize: 11,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.5),
                 ),
               ),
           ],
@@ -486,7 +522,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('Log'),
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                     ),
                   ),
                 ],
@@ -502,7 +541,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                 'Start logging your weight',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.6),
                 ),
               ),
               const SizedBox(height: 40),
@@ -540,7 +581,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Log'),
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                   ),
                 ),
               ],
@@ -555,7 +599,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.1),
                         strokeWidth: 1,
                       );
                     },
@@ -570,7 +616,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                             '${value.toInt()}kg',
                             style: TextStyle(
                               fontSize: 10,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.5),
                             ),
                           );
                         },
@@ -587,15 +635,20 @@ class _ProfileScreenState extends State<ProfileScreen>
                         showTitles: true,
                         reservedSize: 30,
                         getTitlesWidget: (value, meta) {
-                          if (value.toInt() >= sortedDates.length) return const Text('');
-                          final date = DateTime.parse(sortedDates[value.toInt()]);
+                          if (value.toInt() >= sortedDates.length)
+                            return const Text('');
+                          final date = DateTime.parse(
+                            sortedDates[value.toInt()],
+                          );
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
                               DateFormat('M/d').format(date),
                               style: TextStyle(
                                 fontSize: 10,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.5),
                               ),
                             ),
                           );
@@ -659,22 +712,58 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
             const SizedBox(height: 16),
-            _buildGoalRow('Calories', _userProfile!.dailyCalorieGoal, 'kcal', Icons.local_fire_department, Colors.orange),
+            _buildGoalRow(
+              'Calories',
+              _userProfile!.dailyCalorieGoal,
+              'kcal',
+              Icons.local_fire_department,
+              Colors.orange,
+            ),
             const Divider(height: 24),
-            _buildGoalRow('Protein', _userProfile!.dailyProteinGoal, 'g', Icons.fitness_center, Colors.blue),
+            _buildGoalRow(
+              'Protein',
+              _userProfile!.dailyProteinGoal,
+              'g',
+              Icons.fitness_center,
+              Colors.blue,
+            ),
             const Divider(height: 24),
-            _buildGoalRow('Carbs', _userProfile!.dailyCarbsGoal, 'g', Icons.grain, Colors.orange),
+            _buildGoalRow(
+              'Carbs',
+              _userProfile!.dailyCarbsGoal,
+              'g',
+              Icons.grain,
+              Colors.orange,
+            ),
             const Divider(height: 24),
-            _buildGoalRow('Fat', _userProfile!.dailyFatGoal, 'g', Icons.opacity, Colors.purple),
+            _buildGoalRow(
+              'Fat',
+              _userProfile!.dailyFatGoal,
+              'g',
+              Icons.opacity,
+              Colors.purple,
+            ),
             const Divider(height: 24),
-            _buildGoalRow('Water', _userProfile!.dailyWaterGoal, 'ml', Icons.water_drop, Colors.blue),
+            _buildGoalRow(
+              'Water',
+              _userProfile!.dailyWaterGoal,
+              'ml',
+              Icons.water_drop,
+              Colors.blue,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildGoalRow(String label, double value, String unit, IconData icon, Color color) {
+  Widget _buildGoalRow(
+    String label,
+    double value,
+    String unit,
+    IconData icon,
+    Color color,
+  ) {
     return Row(
       children: [
         Container(
@@ -774,7 +863,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                 builder: (context, themeManager, _) {
                   return SwitchListTile(
                     secondary: Icon(
-                      themeManager.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                      themeManager.isDarkMode
+                          ? Icons.dark_mode
+                          : Icons.light_mode,
                       color: Theme.of(context).colorScheme.primary,
                     ),
                     title: const Text('Dark Mode'),
@@ -782,6 +873,23 @@ class _ProfileScreenState extends State<ProfileScreen>
                     onChanged: (value) => themeManager.toggleTheme(),
                   );
                 },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Icon(Icons.psychology, color: Colors.purple.shade300),
+                title: const Text('Gemini Assistant'),
+                subtitle: const Text('AI-powered nutrition insights'),
+                trailing: Switch(
+                  value: _isAiEnabled,
+                  onChanged: (value) {
+                    if (value && _geminiApiKeyController.text.isEmpty) {
+                      _showApiKeyDialog();
+                    } else {
+                      setState(() => _isAiEnabled = value);
+                    }
+                  },
+                ),
+                onTap: _showApiKeyDialog,
               ),
               const Divider(height: 1),
               ListTile(
@@ -794,6 +902,78 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showApiKeyDialog() async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.api, color: Colors.blue),
+            const SizedBox(width: 12),
+            const Text('Gemini API Key'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your Google Gemini API Key to enable AI insights.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _geminiApiKeyController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'API Key',
+                border: OutlineInputBorder(),
+                hintText: 'Enter key here...',
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: _launchApiStudioUrl,
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('Get a free key from Google AI Studio'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final key = _geminiApiKeyController.text.trim();
+              if (key.isNotEmpty) {
+                await StorageHelper.saveGeminiApiKey(key);
+                setState(() => _isAiEnabled = true);
+                if (!mounted) return;
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ API Key saved! AI Coach is now active.'),
+                    backgroundColor: Colors.green,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } else {
+                await StorageHelper.deleteGeminiApiKey();
+                setState(() => _isAiEnabled = false);
+                if (!mounted) return;
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 }

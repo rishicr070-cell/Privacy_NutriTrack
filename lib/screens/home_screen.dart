@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../models/food_entry.dart';
 import '../models/user_profile.dart';
 import '../utils/storage_helper.dart';
 import '../widgets/nutrition_ring_chart.dart';
 import '../widgets/meal_section.dart';
 import '../widgets/water_tracker.dart';
+import '../widgets/skeleton_loader.dart';
+import '../widgets/animated_progress_ring.dart';
+import '../widgets/animated_counter.dart';
+import '../widgets/empty_state_widget.dart';
 import 'add_food_screen.dart';
+import 'ai_insights_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,7 +21,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
   List<FoodEntry> _todayEntries = [];
   UserProfile? _userProfile;
   int _waterIntake = 0;
@@ -47,10 +54,10 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    
+
     final entries = await StorageHelper.getFoodEntries();
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    
+
     final todayEntries = entries.where((entry) {
       final entryDate = DateFormat('yyyy-MM-dd').format(entry.timestamp);
       return entryDate == today;
@@ -58,26 +65,26 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
 
     final profile = await StorageHelper.getUserProfile();
     final waterData = await StorageHelper.getWaterIntake();
-    
+
     setState(() {
       _todayEntries = todayEntries;
       _userProfile = profile;
       _waterIntake = waterData[today] ?? 0;
       _isLoading = false;
     });
-    
+
     _animationController.forward();
   }
 
   double get _totalCalories =>
       _todayEntries.fold(0, (sum, entry) => sum + entry.calories);
-  
+
   double get _totalProtein =>
       _todayEntries.fold(0, (sum, entry) => sum + entry.protein);
-  
+
   double get _totalCarbs =>
       _todayEntries.fold(0, (sum, entry) => sum + entry.carbs);
-  
+
   double get _totalFat =>
       _todayEntries.fold(0, (sum, entry) => sum + entry.fat);
 
@@ -88,38 +95,15 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     return Scaffold(
       body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TweenAnimationBuilder(
-                    tween: Tween<double>(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 1500),
-                    builder: (context, value, child) {
-                      return Transform.scale(
-                        scale: value,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation(
-                            Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Loading your nutrition data...',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
+          ? CustomScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              slivers: [
+                _buildModernAppBar(),
+                const SliverToBoxAdapter(child: SkeletonHomeScreen()),
+              ],
             )
           : RefreshIndicator(
               onRefresh: _loadData,
@@ -133,27 +117,43 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                       opacity: _fadeAnimation,
                       child: Padding(
                         padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildWelcomeCard(),
-                            const SizedBox(height: 20),
-                            _buildQuickStats(),
-                            const SizedBox(height: 24),
-                            _buildNutritionOverview(),
-                            const SizedBox(height: 24),
-                            WaterTracker(
-                              currentIntake: _waterIntake,
-                              goal: _userProfile?.dailyWaterGoal ?? 2000,
-                              onIntakeChanged: (newIntake) {
-                                setState(() => _waterIntake = newIntake);
-                                final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-                                StorageHelper.saveWaterIntake(today, newIntake);
-                              },
+                        child: AnimationLimiter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: AnimationConfiguration.toStaggeredList(
+                              duration: const Duration(milliseconds: 600),
+                              childAnimationBuilder: (widget) => SlideAnimation(
+                                verticalOffset: 50.0,
+                                child: FadeInAnimation(child: widget),
+                              ),
+                              children: [
+                                _buildWelcomeCard(),
+                                const SizedBox(height: 20),
+                                _buildQuickStats(),
+                                const SizedBox(height: 24),
+                                _buildNutritionOverview(),
+                                const SizedBox(height: 24),
+                                _buildAiCoachCard(),
+                                const SizedBox(height: 24),
+                                WaterTracker(
+                                  currentIntake: _waterIntake,
+                                  goal: _userProfile?.dailyWaterGoal ?? 2000,
+                                  onIntakeChanged: (newIntake) {
+                                    setState(() => _waterIntake = newIntake);
+                                    final today = DateFormat(
+                                      'yyyy-MM-dd',
+                                    ).format(DateTime.now());
+                                    StorageHelper.saveWaterIntake(
+                                      today,
+                                      newIntake,
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 24),
+                                _buildMealsSection(),
+                              ],
                             ),
-                            const SizedBox(height: 24),
-                            _buildMealsSection(),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -167,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
 
   Widget _buildModernAppBar() {
     return SliverAppBar(
-      expandedHeight: 100,
+      expandedHeight: 120,
       floating: true,
       pinned: false,
       backgroundColor: Colors.transparent,
@@ -185,26 +185,80 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'NutriTrack',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface,
-                    letterSpacing: -0.5,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF00C9FF), Color(0xFF92FE9D)],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF00C9FF).withOpacity(0.3),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.eco_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [Color(0xFF00C9FF), Color(0xFF92FE9D)],
+                            ).createShader(bounds),
+                            child: const Text(
+                              'NutriTrack',
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: -0.8,
+                                height: 1.0,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            'Your Health Companion',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.5),
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
+                              height: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   DateFormat('EEEE, MMMM d').format(DateTime.now()),
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.6),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -219,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   Widget _buildWelcomeCard() {
     final calorieGoal = _userProfile?.dailyCalorieGoal ?? 2000;
     final percentage = (_totalCalories / calorieGoal * 100).clamp(0.0, 100.0);
-    
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -286,34 +340,62 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: percentage / 100,
-              minHeight: 8,
-              backgroundColor: Colors.white.withOpacity(0.3),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${_totalCalories.toInt()} / ${calorieGoal.toInt()} kcal',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        AnimatedCounter(
+                          value: _totalCalories,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          ' / ${calorieGoal.toInt()}',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'calories today',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                '${percentage.toInt()}%',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              AnimatedProgressRing(
+                progress: percentage / 100,
+                size: 80,
+                strokeWidth: 8,
+                startColor: Colors.white,
+                endColor: Colors.white.withOpacity(0.7),
+                showMilestones: false,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedCounter(
+                      value: percentage,
+                      suffix: '%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -374,10 +456,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: color.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
             color: color.withOpacity(0.1),
@@ -482,7 +561,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
 
   Widget _buildMacroRow(String name, double current, double goal, Color color) {
     final percentage = (current / goal).clamp(0.0, 1.0);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -555,7 +634,93 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     );
   }
 
+  Widget _buildAiCoachCard() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.purple.shade400, Colors.purple.shade700],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.purple.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AiInsightsScreen()),
+          ),
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'AI Nutrition Coach',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Get personalized insights based on your goals',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: Colors.white.withOpacity(0.7),
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMealsSection() {
+    // Check if there are any meals logged
+    if (_todayEntries.isEmpty) {
+      return EmptyStateWidget(
+        type: EmptyStateType.noMeals,
+        onActionPressed: () => _navigateToAddFood('breakfast'),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -585,42 +750,56 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
           ],
         ),
         const SizedBox(height: 16),
-        MealSection(
-          title: 'Breakfast',
-          icon: Icons.wb_sunny_rounded,
-          color: const Color(0xFFFF9500),
-          entries: _getEntriesForMeal('breakfast'),
-          onAddPressed: () => _navigateToAddFood('breakfast'),
-          onDeleteEntry: _deleteEntry,
+        AnimationLimiter(
+          child: Column(
+            children: AnimationConfiguration.toStaggeredList(
+              duration: const Duration(milliseconds: 400),
+              delay: const Duration(milliseconds: 100),
+              childAnimationBuilder: (widget) => SlideAnimation(
+                verticalOffset: 30.0,
+                child: FadeInAnimation(child: widget),
+              ),
+              children: [
+                MealSection(
+                  title: 'Breakfast',
+                  icon: Icons.wb_sunny_rounded,
+                  color: const Color(0xFFFF9500),
+                  entries: _getEntriesForMeal('breakfast'),
+                  onAddPressed: () => _navigateToAddFood('breakfast'),
+                  onDeleteEntry: _deleteEntry,
+                ),
+                const SizedBox(height: 12),
+                MealSection(
+                  title: 'Lunch',
+                  icon: Icons.lunch_dining_rounded,
+                  color: const Color(0xFF34C759),
+                  entries: _getEntriesForMeal('lunch'),
+                  onAddPressed: () => _navigateToAddFood('lunch'),
+                  onDeleteEntry: _deleteEntry,
+                ),
+                const SizedBox(height: 12),
+                MealSection(
+                  title: 'Dinner',
+                  icon: Icons.dinner_dining_rounded,
+                  color: const Color(0xFF007AFF),
+                  entries: _getEntriesForMeal('dinner'),
+                  onAddPressed: () => _navigateToAddFood('dinner'),
+                  onDeleteEntry: _deleteEntry,
+                ),
+                const SizedBox(height: 12),
+                MealSection(
+                  title: 'Snacks',
+                  icon: Icons.cookie_rounded,
+                  color: const Color(0xFFAF52DE),
+                  entries: _getEntriesForMeal('snack'),
+                  onAddPressed: () => _navigateToAddFood('snack'),
+                  onDeleteEntry: _deleteEntry,
+                ),
+                const SizedBox(height: 100),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: 12),
-        MealSection(
-          title: 'Lunch',
-          icon: Icons.lunch_dining_rounded,
-          color: const Color(0xFF34C759),
-          entries: _getEntriesForMeal('lunch'),
-          onAddPressed: () => _navigateToAddFood('lunch'),
-          onDeleteEntry: _deleteEntry,
-        ),
-        const SizedBox(height: 12),
-        MealSection(
-          title: 'Dinner',
-          icon: Icons.dinner_dining_rounded,
-          color: const Color(0xFF007AFF),
-          entries: _getEntriesForMeal('dinner'),
-          onAddPressed: () => _navigateToAddFood('dinner'),
-          onDeleteEntry: _deleteEntry,
-        ),
-        const SizedBox(height: 12),
-        MealSection(
-          title: 'Snacks',
-          icon: Icons.cookie_rounded,
-          color: const Color(0xFFAF52DE),
-          entries: _getEntriesForMeal('snack'),
-          onAddPressed: () => _navigateToAddFood('snack'),
-          onDeleteEntry: _deleteEntry,
-        ),
-        const SizedBox(height: 100),
       ],
     );
   }
@@ -650,10 +829,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
         icon: const Icon(Icons.add_rounded, size: 28),
         label: const Text(
           'Add Food',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -663,12 +839,16 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     final result = await Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => AddFoodScreen(mealType: mealType),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            AddFoodScreen(mealType: mealType),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(0.0, 1.0);
           const end = Offset.zero;
           const curve = Curves.easeOutCubic;
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween = Tween(
+            begin: begin,
+            end: end,
+          ).chain(CurveTween(curve: curve));
           return SlideTransition(
             position: animation.drive(tween),
             child: child,

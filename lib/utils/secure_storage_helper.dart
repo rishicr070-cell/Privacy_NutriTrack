@@ -4,20 +4,46 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Uses platform-specific secure storage (Keychain on iOS, KeyStore on Android)
 class SecureStorageHelper {
   static final SecureStorageHelper _instance = SecureStorageHelper._internal();
-  
+
   factory SecureStorageHelper() => _instance;
-  
+
   SecureStorageHelper._internal();
 
   // Create secure storage instance with encryption options
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock,
-    ),
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
+
+  // ==================== GEMINI API KEY ====================
+
+  /// Save Gemini API Key securely
+  Future<void> saveGeminiApiKey(String apiKey) async {
+    try {
+      await _storage.write(key: 'gemini_api_key', value: apiKey);
+    } catch (e) {
+      print('Error saving Gemini API Key: $e');
+    }
+  }
+
+  /// Get Gemini API Key
+  Future<String?> getGeminiApiKey() async {
+    try {
+      return await _storage.read(key: 'gemini_api_key');
+    } catch (e) {
+      print('Error reading Gemini API Key: $e');
+      return null;
+    }
+  }
+
+  /// Delete Gemini API Key
+  Future<void> deleteGeminiApiKey() async {
+    try {
+      await _storage.delete(key: 'gemini_api_key');
+    } catch (e) {
+      print('Error deleting Gemini API Key: $e');
+    }
+  }
 
   // ==================== THEME PREFERENCE ====================
 
@@ -65,7 +91,10 @@ class SecureStorageHelper {
   /// Save notification preferences
   Future<void> setNotificationsEnabled(bool enabled) async {
     try {
-      await _storage.write(key: 'notifications_enabled', value: enabled.toString());
+      await _storage.write(
+        key: 'notifications_enabled',
+        value: enabled.toString(),
+      );
     } catch (e) {
       print('Error saving notification preference: $e');
     }

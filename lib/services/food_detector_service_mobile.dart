@@ -5,20 +5,22 @@ import 'package:image/image.dart' as img;
 
 class FoodDetectorServiceImpl {
   Interpreter? _interpreter;
+  bool _isModelLoaded = false;
 
   Future<void> loadModel() async {
-    if (_interpreter != null) return;
+    if (_isModelLoaded) return;
     
     try {
-      // Fixed: Use the correct model filename
       _interpreter = await Interpreter.fromAsset(
         'assets/models/Fooddetector.tflite',
       );
-      debugPrint('✅ Food detection model loaded successfully');
-      debugPrint('📊 Input shape: ${_interpreter!.getInputTensors()}');
-      debugPrint('📊 Output shape: ${_interpreter!.getOutputTensors()}');
+      _isModelLoaded = true;
+      debugPrint('✅ Fooddetector.tflite loaded');
+      debugPrint('   Input: [1,640,640,3] float32');
+      debugPrint('   Output: [1,24,8400] float32');
     } catch (e) {
-      debugPrint('❌ Error loading model: $e');
+      debugPrint('❌ Model loading error: $e');
+      _isModelLoaded = false;
       rethrow;
     }
   }
@@ -27,94 +29,191 @@ class FoodDetectorServiceImpl {
     Uint8List imageBytes,
     List<String> labels,
   ) async {
-    if (_interpreter == null) {
-      throw Exception('Model not loaded');
+    if (!_isModelLoaded || _interpreter == null) {
+      await loadModel();
     }
-
-    // Decode image
-    img.Image? image = img.decodeImage(imageBytes);
-    if (image == null) {
-      throw Exception('Unable to decode image');
-    }
-
-    // Resize to model input size (224x224 is common for classification)
-    const int inputSize = 224;
-    final resized = img.copyResize(
-      image, 
-      width: inputSize, 
-      height: inputSize,
-      interpolation: img.Interpolation.linear,
-    );
-
-    // Prepare input tensor [1, 224, 224, 3] with float32 values 0-1
-    final input = _imageToByteListFloat32(resized, inputSize);
-
-    // Prepare output tensor [1, 20] for 20 classes
-    final output = List.filled(labels.length, 0.0).reshape([1, labels.length]);
 
     try {
-      // Run inference
-      _interpreter!.run(input, output);
-    } catch (e) {
-      debugPrint('❌ Inference error: $e');
-      rethrow;
-    }
+      // 1. PREPROCESS: Decode and resize to 640x640
+      final decoded = img.decodeImage(imageBytes);
+      if (decoded == null) {
+        return _errorResult('Invalid image');
+      }
 
-    // Find best prediction
-    double maxConfidence = -1.0;
-    int bestIndex = 0;
-    
-    for (int i = 0; i < labels.length; i++) {
-      final confidence = output[0][i] as double;
-      if (confidence > maxConfidence) {
-        maxConfidence = confidence;
-        bestIndex = i;
+      final resized = img.copyResize(
+        decoded,
+        width: 640,
+        height: 640,
+        interpolation: img.Interpolation.linear,
+      );
+
+      // Convert to float32 [1,640,640,3] with 0-1 normalization
+      final input = _imageToByteListFloat32(resized);
+
+      // 2. ALLOCATE OUTPUT: [1, 24, 8400]
+      final output = List.generate(
+        1,
+        (_) => List.generate(
+          24,
+          (_) => List<double>.filled(8400, 0.0),
+        ),
+      );
+
+      // 3. RUN INFERENCE
+      debugPrint('Running inference...');
+      _interpreter!.run(input, output);
+      debugPrint('✅ Inference complete');
+
+      // 4. PARSE DETECTIONS
+      return _parseDetections(output, labels);
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Detection error: $e');
+      debugPrint('Stack: $stackTrace');
+      return _errorResult('Error: $e');
+    }
+  }
+
+  /// Convert image to Float32 tensor [1,640,640,3] normalized to 0-1
+  Uint8List _imageToByteListFloat32(img.Image image) {
+    const inputSize = 640;
+    final convertedBytes = Float32List(1 * inputSize * inputSize * 3);
+    int pixelIndex = 0;
+
+    for (int y = 0; y < inputSize; y++) {
+      for (int x = 0; x < inputSize; x++) {
+        final pixel = image.getPixelSafe(x, y);
+        convertedBytes[pixelIndex++] = pixel.r / 255.0;
+        convertedBytes[pixelIndex++] = pixel.g / 255.0;
+        convertedBytes[pixelIndex++] = pixel.b / 255.0;
       }
     }
 
-    final detectedLabel = labels[bestIndex];
-    debugPrint('🍽️ Detected: $detectedLabel with confidence: ${(maxConfidence * 100).toStringAsFixed(1)}%');
+    return convertedBytes.buffer.asUint8List();
+  }
+
+  /// Parse YOLO output [1, 24, 8400]
+  /// Channels 0-3: x, y, w, h (bbox)
+  /// Channels 4-23: 20 class scores
+  Map<String, dynamic> _parseDetections(
+    List<List<List<double>>> output,
+    List<String> labels,
+  ) {
+    const numBoxes = 8400;
+    const numClasses = 20;
+    const scoreThreshold = 0.5;
+
+    double bestScore = 0.0;
+    String bestLabel = 'Unknown';
+    List<double>? bestBbox;
+    int bestClassIndex = -1;
+
+    List<Map<String, dynamic>> allDetections = [];
+
+    // Iterate through all 8400 detection boxes
+    for (int i = 0; i < numBoxes; i++) {
+      // Read bounding box from channels 0-3
+      final double x = output[0][0][i];
+      final double y = output[0][1][i];
+      final double w = output[0][2][i];
+      final double h = output[0][3][i];
+
+      // Read class scores from channels 4-23
+      int bestClass = -1;
+      double maxClassScore = 0.0;
+
+      for (int c = 0; c < numClasses; c++) {
+        final score = output[0][4 + c][i];
+        if (score > maxClassScore) {
+          maxClassScore = score;
+          bestClass = c;
+        }
+      }
+
+      // Keep detections above threshold
+      if (maxClassScore > scoreThreshold && 
+          bestClass >= 0 && 
+          bestClass < labels.length) {
+        
+        allDetections.add({
+          'label': labels[bestClass],
+          'confidence': maxClassScore,
+          'bbox': [x, y, w, h],
+          'class_index': bestClass,
+        });
+
+        // Track best detection
+        if (maxClassScore > bestScore) {
+          bestScore = maxClassScore;
+          bestLabel = labels[bestClass];
+          bestBbox = [x, y, w, h];
+          bestClassIndex = bestClass;
+        }
+      }
+    }
+
+    // Sort all detections by confidence
+    allDetections.sort((a, b) => 
+      (b['confidence'] as double).compareTo(a['confidence'] as double)
+    );
+
+    // Create all_predictions for UI compatibility
+    List<Map<String, dynamic>> allPredictions = [];
+    for (int c = 0; c < labels.length && c < numClasses; c++) {
+      // Find best score for this class
+      double maxForClass = 0.0;
+      for (var det in allDetections) {
+        if (det['class_index'] == c) {
+          maxForClass = det['confidence'] as double;
+          break;
+        }
+      }
+      allPredictions.add({
+        'label': labels[c],
+        'confidence': maxForClass,
+      });
+    }
+    allPredictions.sort((a, b) => 
+      (b['confidence'] as double).compareTo(a['confidence'] as double)
+    );
+
+    debugPrint('Fooddetector → $bestLabel (${(bestScore * 100).toStringAsFixed(1)}%)');
+    debugPrint('Total detections above threshold: ${allDetections.length}');
+    if (bestBbox != null) {
+      debugPrint('BBox: [${bestBbox.map((v) => v.toStringAsFixed(1)).join(", ")}]');
+    }
+
+    if (bestScore < 0.25) {
+      return {
+        'label': 'Unknown (${(bestScore * 100).toStringAsFixed(1)}%)',
+        'confidence': bestScore,
+        'bbox': bestBbox,
+        'all_predictions': allPredictions,
+        'detections': allDetections,
+      };
+    }
 
     return {
-      'label': detectedLabel,
-      'confidence': maxConfidence,
-      'all_predictions': List.generate(
-        labels.length, 
-        (i) => {
-          'label': labels[i],
-          'confidence': output[0][i] as double,
-        },
-      )..sort((a, b) => (b['confidence'] as double).compareTo(a['confidence'] as double)),
+      'label': bestLabel,
+      'confidence': bestScore,
+      'bbox': bestBbox,
+      'all_predictions': allPredictions,
+      'detections': allDetections,
     };
   }
 
-  /// Convert image to Float32List for model input
-  List<List<List<List<double>>>> _imageToByteListFloat32(
-    img.Image image, 
-    int inputSize,
-  ) {
-    return List.generate(
-      1,
-      (_) => List.generate(
-        inputSize,
-        (y) => List.generate(
-          inputSize,
-          (x) {
-            final pixel = image.getPixelSafe(x, y);
-            // Normalize to 0-1 range
-            final r = pixel.r.toDouble() / 255.0;
-            final g = pixel.g.toDouble() / 255.0;
-            final b = pixel.b.toDouble() / 255.0;
-            return [r, g, b];
-          },
-        ),
-      ),
-    );
+  Map<String, dynamic> _errorResult(String message) {
+    return {
+      'label': message,
+      'confidence': 0.0,
+      'all_predictions': [],
+    };
   }
 
   void dispose() {
     _interpreter?.close();
     _interpreter = null;
-    debugPrint('🗑️ Food detector model disposed');
+    _isModelLoaded = false;
+    debugPrint('Fooddetector disposed');
   }
 }

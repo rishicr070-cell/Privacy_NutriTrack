@@ -5,6 +5,7 @@ import 'package:privacy_first_nutrition_tracking_app/utils/food_data_loader.dart
 // import 'package:mobile_scanner/mobile_scanner.dart'; // Disabled for web compatibility
 import '../models/food_entry.dart';
 import '../utils/storage_helper.dart';
+import '../widgets/empty_state_widget.dart';
 import 'add_food_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -55,8 +56,9 @@ class _SearchScreenState extends State<SearchScreen>
     setState(() {
       _isSearching = true;
       _searchResults = _allFoodItems
-          .where((food) =>
-              food.foodName.toLowerCase().contains(query.toLowerCase()))
+          .where(
+            (food) => food.foodName.toLowerCase().contains(query.toLowerCase()),
+          )
           .toList();
     });
   }
@@ -93,14 +95,16 @@ class _SearchScreenState extends State<SearchScreen>
       // Barcode scanner not available on web
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Barcode scanner is not available on web. Please use mobile app.'),
+          content: Text(
+            'Barcode scanner is not available on web. Please use mobile app.',
+          ),
           duration: Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
-    
+
     /* Navigator.push(
       context,
       MaterialPageRoute(
@@ -123,7 +127,7 @@ class _SearchScreenState extends State<SearchScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -144,7 +148,11 @@ class _SearchScreenState extends State<SearchScreen>
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       } else if (snapshot.hasError) {
-                        return Center(child: Text('Error loading food data: ${snapshot.error}'));
+                        return Center(
+                          child: Text(
+                            'Error loading food data: ${snapshot.error}',
+                          ),
+                        );
                       } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                         return const Center(child: Text('No food data found.'));
                       } else {
@@ -152,6 +160,8 @@ class _SearchScreenState extends State<SearchScreen>
                           return _buildNoResults();
                         } else if (_searchResults.isNotEmpty) {
                           return _buildSearchResults();
+                        } else if (_searchController.text.isEmpty) {
+                          return _buildSearchPrompt();
                         } else {
                           return _buildCategorySections();
                         }
@@ -179,10 +189,7 @@ class _SearchScreenState extends State<SearchScreen>
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Colors.green.withAlpha(26),
-                Colors.blue.withAlpha(13),
-              ],
+              colors: [Colors.green.withAlpha(26), Colors.blue.withAlpha(13)],
             ),
           ),
         ),
@@ -203,7 +210,7 @@ class _SearchScreenState extends State<SearchScreen>
             controller: _searchController,
             onChanged: _performSearch,
             decoration: InputDecoration(
-              hintText: 'Search for foods...', 
+              hintText: 'Search for foods...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
@@ -243,10 +250,30 @@ class _SearchScreenState extends State<SearchScreen>
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _buildMealTypeChip('breakfast', 'Breakfast', Icons.wb_sunny_rounded, Colors.orange),
-          _buildMealTypeChip('lunch', 'Lunch', Icons.lunch_dining_rounded, Colors.green),
-          _buildMealTypeChip('dinner', 'Dinner', Icons.dinner_dining_rounded, Colors.blue),
-          _buildMealTypeChip('snack', 'Snack', Icons.cookie_rounded, Colors.purple),
+          _buildMealTypeChip(
+            'breakfast',
+            'Breakfast',
+            Icons.wb_sunny_rounded,
+            Colors.orange,
+          ),
+          _buildMealTypeChip(
+            'lunch',
+            'Lunch',
+            Icons.lunch_dining_rounded,
+            Colors.green,
+          ),
+          _buildMealTypeChip(
+            'dinner',
+            'Dinner',
+            Icons.dinner_dining_rounded,
+            Colors.blue,
+          ),
+          _buildMealTypeChip(
+            'snack',
+            'Snack',
+            Icons.cookie_rounded,
+            Colors.purple,
+          ),
         ],
       ),
     );
@@ -280,7 +307,9 @@ class _SearchScreenState extends State<SearchScreen>
         selectedColor: color,
         checkmarkColor: Colors.white,
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+          color: isSelected
+              ? Colors.white
+              : Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -288,38 +317,19 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   Widget _buildNoResults() {
-    return Center(
-      child: Column(
-        children: [
-          const SizedBox(height: 40),
-          Icon(
-            Icons.search_off,
-            size: 80,
-            color: Theme.of(context).colorScheme.onSurface.withAlpha(77),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No foods found',
-            style: TextStyle(
-              fontSize: 18,
-              color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AddFoodScreen(mealType: _selectedMealType),
-                ),
-              );
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Create Custom Food'),
-          ),
-        ],
-      ),
+    return EmptyStateWidget(
+      type: EmptyStateType.noSearchResults,
+      onActionPressed: () {
+        _searchController.clear();
+        _performSearch('');
+      },
+    );
+  }
+
+  Widget _buildSearchPrompt() {
+    return EmptyStateWidget(
+      type: EmptyStateType.searchPrompt,
+      onActionPressed: _showBarcodeScanner,
     );
   }
 
@@ -356,7 +366,9 @@ class _SearchScreenState extends State<SearchScreen>
           ),
         ),
         const SizedBox(height: 12),
-        ..._allFoodItems.take(10).map((food) => _buildFoodCard(food)), // Show first 10 items
+        ..._allFoodItems
+            .take(10)
+            .map((food) => _buildFoodCard(food)), // Show first 10 items
       ],
     );
   }
@@ -400,10 +412,9 @@ class _SearchScreenState extends State<SearchScreen>
                       '100g • ${food.energyKcal.toInt()} kcal',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withAlpha(153),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withAlpha(153),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -411,10 +422,9 @@ class _SearchScreenState extends State<SearchScreen>
                       'P: ${food.proteinG}g • C: ${food.carbG}g • F: ${food.fatG}g',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withAlpha(128),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withAlpha(128),
                       ),
                     ),
                   ],

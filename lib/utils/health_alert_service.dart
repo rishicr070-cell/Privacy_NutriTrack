@@ -22,53 +22,94 @@ enum HealthAlertSeverity {
 }
 
 class HealthAlertService {
+  // High sodium foods with estimated sodium content (mg per 100g)
+  static const Map<String, double> highSodiumFoods = {
+    'salt': 38000.0,
+    'pickle': 3500.0,
+    'papad': 1800.0,
+    'chips': 500.0,
+    'namkeen': 800.0,
+    'soy sauce': 5500.0,
+    'processed meat': 1000.0,
+    'canned soup': 400.0,
+    'instant noodles': 1500.0,
+    'salted nuts': 400.0,
+    'vadapav': 600.0,
+    'vada pav': 600.0,
+    'pav bhaji': 700.0,
+    'chaat': 500.0,
+    'bhujia': 900.0,
+    'mixture': 700.0,
+    'fryums': 800.0,
+    'sauce': 1000.0,
+    'ketchup': 1000.0,
+    'cheese': 600.0,
+    'pizza': 600.0,
+    'burger': 500.0,
+    'french fries': 300.0,
+    'fried': 400.0,
+  };
+
+  // High fat/fried foods
+  static const List<String> friedFoods = [
+    'fried', 'deep fried', 'pakora', 'samosa', 'paratha', 'puri', 
+    'vadai', 'vada', 'bonda', 'bhaji', 'bajji', 'tempura', 'french fries',
+    'chips', 'wafer', 'crispy', 'fritter', 'cutlet'
+  ];
+
   // Comprehensive list of health conditions with dietary restrictions
   static const Map<String, Map<String, dynamic>> healthConditionRules = {
     'diabetes': {
       'name': 'Diabetes',
       'icon': '🩺',
-      'highSugarLimit': 15.0, // grams per serving
-      'highCarbLimit': 45.0, // grams per serving
+      'highSugarLimit': 15.0,
+      'highCarbLimit': 45.0,
       'restrictedFoods': [
         'sugar', 'candy', 'cake', 'pastry', 'soda', 'juice', 'honey',
         'jaggery', 'gulab jamun', 'jalebi', 'rasgulla', 'burfi', 'ladoo',
         'ice cream', 'chocolate', 'cookie', 'biscuit', 'sweet', 'mithai',
         'kheer', 'halwa', 'barfi', 'peda', 'mysore pak', 'kaju katli',
-        'ras malai', 'chocolate ice cream', 'vanilla ice cream', 'kulfi',
-        'falooda', 'shrikhand', 'basundi'
+        'ras malai', 'kulfi', 'falooda', 'shrikhand', 'basundi', 'donut',
+        'muffin', 'brownie', 'pudding', 'custard', 'milkshake', 'cola',
+        'pepsi', 'sprite', 'fanta', 'dessert', 'sweetened', 'syrup',
       ],
     },
     'hypertension': {
       'name': 'Hypertension (High Blood Pressure)',
       'icon': '❤️',
-      'highSodiumLimit': 300.0, // mg per serving (ideally <2000mg/day)
+      'highSodiumLimit': 300.0,
       'restrictedFoods': [
         'salt', 'pickle', 'papad', 'chips', 'namkeen', 'soy sauce',
-        'processed meat', 'canned soup', 'instant noodles', 'salted nuts'
+        'processed meat', 'canned soup', 'instant noodles', 'salted nuts',
+        'salted', 'salty', 'vadapav', 'vada pav', 'pav bhaji', 'chaat',
+        'bhujia', 'mixture', 'sauce', 'ketchup', 'preserved', 'cured',
+        'smoked', 'bacon', 'ham', 'sausage', 'salami', 'pepperoni',
       ],
     },
     'heart_disease': {
       'name': 'Heart Disease',
       'icon': '💓',
-      'highFatLimit': 10.0, // grams per serving
-      'highSaturatedFatLimit': 5.0, // grams per serving
-      'highCholesterolLimit': 100.0, // mg per serving
+      'highFatLimit': 10.0,
+      'highSaturatedFatLimit': 5.0,
+      'highCholesterolLimit': 100.0,
       'restrictedFoods': [
         'butter', 'ghee', 'cream', 'cheese', 'fried food', 'red meat',
         'organ meats', 'coconut oil', 'palm oil', 'pakora', 'samosa',
-        'paratha', 'puri', 'vadai'
+        'paratha', 'puri', 'vadai', 'fried', 'deep fried', 'fatty',
+        'oily', 'chips', 'french fries', 'burger', 'pizza', 'fast food',
       ],
     },
     'kidney_disease': {
       'name': 'Kidney Disease',
       'icon': '🫘',
-      'highProteinLimit': 20.0, // grams per serving
-      'highPotassiumLimit': 400.0, // mg per serving
-      'highPhosphorusLimit': 200.0, // mg per serving
+      'highProteinLimit': 20.0,
+      'highPotassiumLimit': 400.0,
+      'highPhosphorusLimit': 200.0,
       'restrictedFoods': [
         'banana', 'orange', 'potato', 'tomato', 'spinach', 'beans',
         'lentils', 'nuts', 'dairy products', 'chocolate', 'cola',
-        'whole wheat', 'brown rice'
+        'whole wheat', 'brown rice', 'avocado', 'dried fruit', 'nuts',
+        'seeds', 'bran', 'dates', 'raisins', 'prunes',
       ],
     },
     'gout': {
@@ -78,7 +119,8 @@ class HealthAlertService {
       'restrictedFoods': [
         'red meat', 'organ meats', 'seafood', 'shellfish', 'sardines',
         'anchovies', 'beer', 'alcohol', 'sugary drinks', 'asparagus',
-        'mushrooms', 'cauliflower'
+        'mushrooms', 'cauliflower', 'liver', 'kidney', 'brain', 'heart',
+        'mutton', 'lamb', 'pork', 'bacon', 'fish', 'crab', 'lobster',
       ],
     },
     'celiac_disease': {
@@ -88,7 +130,8 @@ class HealthAlertService {
       'restrictedFoods': [
         'wheat', 'barley', 'rye', 'bread', 'pasta', 'noodles',
         'chapati', 'roti', 'paratha', 'naan', 'cake', 'cookies',
-        'biscuits', 'pizza', 'burger bun'
+        'biscuits', 'pizza', 'burger bun', 'atta', 'maida', 'semolina',
+        'couscous', 'bulgur', 'farro', 'seitan', 'soy sauce',
       ],
     },
     'lactose_intolerance': {
@@ -97,7 +140,8 @@ class HealthAlertService {
       'dairyFree': true,
       'restrictedFoods': [
         'milk', 'cheese', 'butter', 'yogurt', 'cream', 'ice cream',
-        'paneer', 'kheer', 'rasgulla', 'gulab jamun', 'lassi', 'buttermilk'
+        'paneer', 'kheer', 'rasgulla', 'gulab jamun', 'lassi', 'buttermilk',
+        'curd', 'dahi', 'dairy', 'whey', 'casein', 'ghee', 'malai',
       ],
     },
     'fatty_liver': {
@@ -107,7 +151,8 @@ class HealthAlertService {
       'avoidAlcohol': true,
       'restrictedFoods': [
         'alcohol', 'fried food', 'fatty meat', 'butter', 'margarine',
-        'refined carbs', 'white bread', 'pastries', 'soda', 'candy'
+        'refined carbs', 'white bread', 'pastries', 'soda', 'candy',
+        'beer', 'wine', 'liquor', 'oily', 'greasy', 'junk food',
       ],
     },
     'ibs': {
@@ -116,7 +161,7 @@ class HealthAlertService {
       'restrictedFoods': [
         'beans', 'lentils', 'cabbage', 'broccoli', 'onion', 'garlic',
         'dairy', 'wheat', 'artificial sweeteners', 'caffeine', 'alcohol',
-        'spicy food'
+        'spicy food', 'chili', 'pepper', 'hot sauce', 'rajma', 'chana',
       ],
     },
     'pcod': {
@@ -126,7 +171,8 @@ class HealthAlertService {
       'highCarbLimit': 30.0,
       'restrictedFoods': [
         'white bread', 'white rice', 'pasta', 'sugary drinks', 'candy',
-        'pastries', 'fried food', 'processed food'
+        'pastries', 'fried food', 'processed food', 'maida', 'refined',
+        'junk food', 'fast food', 'sweetened',
       ],
     },
     'thyroid': {
@@ -134,7 +180,7 @@ class HealthAlertService {
       'icon': '🦋',
       'restrictedFoods': [
         'soy products', 'cruciferous vegetables (raw)', 'millet',
-        'processed food', 'excessive iodine'
+        'processed food', 'excessive iodine', 'soy', 'tofu', 'soybean',
       ],
     },
     'obesity': {
@@ -144,10 +190,35 @@ class HealthAlertService {
       'highFatLimit': 15.0,
       'restrictedFoods': [
         'fried food', 'fast food', 'soda', 'candy', 'pastries',
-        'chips', 'ice cream', 'processed food', 'sugary drinks'
+        'chips', 'ice cream', 'processed food', 'sugary drinks',
+        'junk food', 'burger', 'pizza', 'donut', 'cake',
       ],
     },
   };
+
+  // Estimate sodium content for common foods
+  static double _estimateSodium(String foodName, double? actualSodium) {
+    if (actualSodium != null && actualSodium > 0) {
+      return actualSodium;
+    }
+
+    final lowerName = foodName.toLowerCase();
+    
+    // Check against high sodium foods database
+    for (var entry in highSodiumFoods.entries) {
+      if (lowerName.contains(entry.key)) {
+        return entry.value;
+      }
+    }
+
+    return 0.0;
+  }
+
+  // Check if food is fried/high fat
+  static bool _isFriedFood(String foodName) {
+    final lowerName = foodName.toLowerCase();
+    return friedFoods.any((fried) => lowerName.contains(fried));
+  }
 
   // Check for health alerts based on food and user profile
   static List<HealthAlert> checkFoodAlerts(
@@ -157,7 +228,7 @@ class HealthAlertService {
   ) {
     List<HealthAlert> alerts = [];
 
-    if (profile == null || profile.healthConditions.isEmpty) {
+    if (profile == null || profile.healthConditions.isEmpty && profile.allergies.isEmpty) {
       return alerts;
     }
 
@@ -167,6 +238,10 @@ class HealthAlertService {
     final actualFat = food.fat * multiplier;
     final actualProtein = food.protein * multiplier;
     final actualCalories = food.calories * multiplier;
+    
+    // Estimate sodium with better detection
+    final estimatedSodiumPer100g = _estimateSodium(food.name, food.sodium);
+    final actualSodium = estimatedSodiumPer100g * multiplier;
 
     for (String condition in profile.healthConditions) {
       final rules = healthConditionRules[condition];
@@ -196,7 +271,6 @@ class HealthAlertService {
       if (condition == 'diabetes') {
         final highCarbLimit = rules['highCarbLimit'] as double;
         
-        // High carbs warning
         if (actualCarbs > highCarbLimit) {
           alerts.add(HealthAlert(
             title: '$icon High Carbohydrate Warning',
@@ -207,7 +281,6 @@ class HealthAlertService {
           ));
         }
         
-        // Very high carbs - danger alert
         if (actualCarbs > 60.0) {
           alerts.add(HealthAlert(
             title: '$icon DANGER: Very High Carbs',
@@ -219,30 +292,49 @@ class HealthAlertService {
         }
       }
 
-      // Hypertension checks
-      if (condition == 'hypertension' && food.sodium != null) {
+      // Hypertension checks - IMPROVED
+      if (condition == 'hypertension') {
         final highSodiumLimit = rules['highSodiumLimit'] as double;
-        final actualSodium = food.sodium! * multiplier;
+        
         if (actualSodium > highSodiumLimit) {
+          final severity = actualSodium > 600.0 
+              ? HealthAlertSeverity.danger 
+              : HealthAlertSeverity.warning;
+          
           alerts.add(HealthAlert(
-            title: '$icon High Sodium Warning',
+            title: actualSodium > 600.0 
+                ? '$icon DANGER: Very High Sodium' 
+                : '$icon High Sodium Warning',
             message:
-                'This food contains ${actualSodium.toInt()}mg of sodium. High sodium intake can raise blood pressure.',
-            severity: HealthAlertSeverity.warning,
+                'This food contains ${actualSodium.toInt()}mg of sodium per serving. High sodium intake can raise blood pressure significantly.',
+            severity: severity,
             condition: condition,
           ));
         }
       }
 
-      // Heart disease checks
+      // Heart disease checks - IMPROVED
       if (condition == 'heart_disease') {
         final highFatLimit = rules['highFatLimit'] as double;
+        
+        if (_isFriedFood(food.name)) {
+          alerts.add(HealthAlert(
+            title: '$icon Fried Food Warning',
+            message:
+                '${food.name} is fried/high in fat. Fried foods can increase cholesterol and heart disease risk.',
+            severity: HealthAlertSeverity.warning,
+            condition: condition,
+          ));
+        }
+        
         if (actualFat > highFatLimit) {
           alerts.add(HealthAlert(
             title: '$icon High Fat Warning',
             message:
-                'This serving contains ${actualFat.toInt()}g of fat. Consider limiting fat intake for heart health.',
-            severity: HealthAlertSeverity.warning,
+                'This serving contains ${actualFat.toInt()}g of fat. High fat intake can increase cholesterol and heart disease risk.',
+            severity: actualFat > 20.0 
+                ? HealthAlertSeverity.danger 
+                : HealthAlertSeverity.warning,
             condition: condition,
           ));
         }
@@ -265,11 +357,23 @@ class HealthAlertService {
       // Obesity checks
       if (condition == 'obesity') {
         final highCalorieLimit = rules['highCalorieLimit'] as double;
+        final highFatLimit = rules['highFatLimit'] as double;
+        
         if (actualCalories > highCalorieLimit) {
           alerts.add(HealthAlert(
             title: '$icon High Calorie Warning',
             message:
                 'This serving contains ${actualCalories.toInt()} calories. Consider portion control for weight management.',
+            severity: HealthAlertSeverity.warning,
+            condition: condition,
+          ));
+        }
+        
+        if (_isFriedFood(food.name)) {
+          alerts.add(HealthAlert(
+            title: '$icon Fried Food Alert',
+            message:
+                '${food.name} is fried/high-fat. Fried foods are calorie-dense and can hinder weight loss.',
             severity: HealthAlertSeverity.warning,
             condition: condition,
           ));
@@ -289,11 +393,56 @@ class HealthAlertService {
           ));
         }
       }
+
+      // Fatty liver checks
+      if (condition == 'fatty_liver') {
+        final highFatLimit = rules['highFatLimit'] as double;
+        
+        if (_isFriedFood(food.name) || actualFat > highFatLimit) {
+          alerts.add(HealthAlert(
+            title: '$icon High Fat Warning',
+            message:
+                'This food is high in fat (${actualFat.toInt()}g). High fat foods can worsen fatty liver disease.',
+            severity: HealthAlertSeverity.warning,
+            condition: condition,
+          ));
+        }
+      }
+
+      // Gout checks
+      if (condition == 'gout') {
+        // Already checked in restricted foods
+      }
+
+      // Celiac disease checks
+      if (condition == 'celiac_disease') {
+        // Already checked in restricted foods
+      }
+
+      // Lactose intolerance checks
+      if (condition == 'lactose_intolerance') {
+        // Already checked in restricted foods
+      }
+
+      // IBS checks
+      if (condition == 'ibs') {
+        // Already checked in restricted foods
+      }
+
+      // Thyroid checks
+      if (condition == 'thyroid') {
+        // Already checked in restricted foods
+      }
     }
 
-    // Check allergies
+    // Check allergies - IMPROVED
     for (String allergy in profile.allergies) {
-      if (food.name.toLowerCase().contains(allergy.toLowerCase())) {
+      final allergyLower = allergy.toLowerCase();
+      final foodNameLower = food.name.toLowerCase();
+      
+      // More flexible matching
+      if (foodNameLower.contains(allergyLower) || 
+          allergyLower.contains(foodNameLower.split(' ').first)) {
         alerts.add(HealthAlert(
           title: '⚠️ Allergy Alert',
           message:

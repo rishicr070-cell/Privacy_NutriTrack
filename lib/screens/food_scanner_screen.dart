@@ -31,7 +31,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Food detection model loaded!'),
+            content: Text('✅ Model ready!'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
@@ -41,9 +41,8 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error loading model: $e'),
+            content: Text('❌ Error: $e'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -63,10 +62,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
       setState(() => _isLoading = true);
 
-      // Read image bytes
       final bytes = await image.readAsBytes();
-      
-      // Run detection
       final result = await _detector.detectFood(bytes);
 
       setState(() {
@@ -152,9 +148,9 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   }
 
   Widget _buildResults() {
-    final label = _result!['label'] as String;
-    final confidence = _result!['confidence'] as double;
-    final allPredictions = _result!['all_predictions'] as List;
+    final label = _result?['label'] as String? ?? 'Unknown';
+    final confidence = _result?['confidence'] as double? ?? 0.0;
+    final allPredictions = _result?['all_predictions'] as List? ?? [];
 
     return Card(
       elevation: 4,
@@ -168,9 +164,9 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
           children: [
             Row(
               children: [
-                const Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
+                Icon(
+                  confidence > 0.25 ? Icons.check_circle : Icons.warning,
+                  color: confidence > 0.25 ? Colors.green : Colors.orange,
                   size: 28,
                 ),
                 const SizedBox(width: 12),
@@ -199,58 +195,62 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
             const SizedBox(height: 16),
             _buildConfidenceBar(confidence),
-            const SizedBox(height: 24),
-            const Text(
-              'Top Predictions:',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...allPredictions.take(5).map((pred) {
-              final predLabel = pred['label'] as String;
-              final predConf = pred['confidence'] as double;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(predLabel.replaceAll('_', ' ')),
-                    ),
-                    Text(
-                      '${(predConf * 100).toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        color: predConf > 0.5 ? Colors.green : Colors.grey,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+            if (allPredictions.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              const Text(
+                'Top Predictions:',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
-              );
-            }),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context, {
-                    'name': label.replaceAll('_', ' '),
-                    'confidence': confidence,
-                  });
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Use This Food'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4ECDC4),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.all(16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              ),
+              const SizedBox(height: 12),
+              ...allPredictions.take(5).map((pred) {
+                final predLabel = (pred['label'] as String?) ?? 'Unknown';
+                final predConf = (pred['confidence'] as double?) ?? 0.0;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(predLabel.replaceAll('_', ' ')),
+                      ),
+                      Text(
+                        '${(predConf * 100).toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          color: predConf > 0.5 ? Colors.green : Colors.grey,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+            if (confidence > 0.25) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context, {
+                      'name': label.replaceAll('_', ' '),
+                      'confidence': confidence,
+                    });
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Use This Food'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4ECDC4),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -353,7 +353,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                 Icon(Icons.info_outline, color: Colors.blue.shade700),
                 const SizedBox(width: 8),
                 Text(
-                  'How to get best results:',
+                  'Best results:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.blue.shade700,
@@ -362,10 +362,10 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            _buildInstruction('📸 Take clear, well-lit photos'),
-            _buildInstruction('🍽️ Focus on the food item'),
-            _buildInstruction('📏 Fill most of the frame with food'),
-            _buildInstruction('🔍 Works best with Indian dishes'),
+            _buildInstruction('📸 Clear, well-lit photos'),
+            _buildInstruction('🍽️ Focus on food'),
+            _buildInstruction('📏 Fill frame with dish'),
+            _buildInstruction('🇮🇳 Indian food works best'),
           ],
         ),
       ),
@@ -375,10 +375,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   Widget _buildInstruction(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 14),
-      ),
+      child: Text(text, style: const TextStyle(fontSize: 14)),
     );
   }
 }

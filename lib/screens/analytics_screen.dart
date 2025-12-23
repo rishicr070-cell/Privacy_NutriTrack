@@ -3,6 +3,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../models/food_entry.dart';
 import '../utils/storage_helper.dart';
+import '../widgets/empty_state_widget.dart';
+import '../widgets/skeleton_loader.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -56,7 +58,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     for (var entry in _recentEntries) {
       final dateKey = DateFormat('yyyy-MM-dd').format(entry.timestamp);
       data[dateKey] ??= {'protein': 0, 'carbs': 0, 'fat': 0};
-      data[dateKey]!['protein'] = (data[dateKey]!['protein'] ?? 0) + entry.protein;
+      data[dateKey]!['protein'] =
+          (data[dateKey]!['protein'] ?? 0) + entry.protein;
       data[dateKey]!['carbs'] = (data[dateKey]!['carbs'] ?? 0) + entry.carbs;
       data[dateKey]!['fat'] = (data[dateKey]!['fat'] ?? 0) + entry.fat;
     }
@@ -65,16 +68,46 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
   double get _averageCalories {
     if (_dailyCalories.isEmpty) return 0;
-    return _dailyCalories.values.reduce((a, b) => a + b) / _dailyCalories.length;
+    return _dailyCalories.values.reduce((a, b) => a + b) /
+        _dailyCalories.length;
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     return Scaffold(
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? CustomScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              slivers: [
+                _buildAppBar(),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        _buildTimeRangeSelector(),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(child: SkeletonCard(height: 120)),
+                            const SizedBox(width: 12),
+                            Expanded(child: SkeletonCard(height: 120)),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        const SkeletonChart(height: 250),
+                        const SizedBox(height: 24),
+                        const SkeletonChart(height: 250),
+                        const SizedBox(height: 24),
+                        const SkeletonChart(height: 250),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            )
           : RefreshIndicator(
               onRefresh: _loadData,
               child: CustomScrollView(
@@ -118,10 +151,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Colors.purple.withAlpha(26),
-                Colors.blue.withAlpha(13),
-              ],
+              colors: [Colors.purple.withAlpha(26), Colors.blue.withAlpha(13)],
             ),
           ),
         ),
@@ -164,7 +194,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         selectedColor: Theme.of(context).colorScheme.primary,
         checkmarkColor: Colors.white,
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+          color: isSelected
+              ? Colors.white
+              : Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -276,7 +308,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.orange.withAlpha(26),
                     borderRadius: BorderRadius.circular(20),
@@ -294,7 +329,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       const SizedBox(width: 6),
                       const Text(
                         'Calories',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -312,7 +350,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     horizontalInterval: maxCalories / 4,
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: Theme.of(context).colorScheme.onSurface.withAlpha(26),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withAlpha(26),
                         strokeWidth: 1,
                       );
                     },
@@ -327,7 +367,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                             value.toInt().toString(),
                             style: TextStyle(
                               fontSize: 10,
-                              color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withAlpha(128),
                             ),
                           );
                         },
@@ -344,15 +386,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                         showTitles: true,
                         reservedSize: 30,
                         getTitlesWidget: (value, meta) {
-                          if (value.toInt() >= sortedDates.length) return const Text('');
-                          final date = DateTime.parse(sortedDates[value.toInt()]);
+                          if (value.toInt() >= sortedDates.length)
+                            return const Text('');
+                          final date = DateTime.parse(
+                            sortedDates[value.toInt()],
+                          );
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
                               DateFormat('M/d').format(date),
                               style: TextStyle(
                                 fontSize: 10,
-                                color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withAlpha(128),
                               ),
                             ),
                           );
@@ -452,7 +499,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: Theme.of(context).colorScheme.onSurface.withAlpha(26),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withAlpha(26),
                         strokeWidth: 1,
                       );
                     },
@@ -467,7 +516,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                             '${value.toInt()}g',
                             style: TextStyle(
                               fontSize: 10,
-                              color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withAlpha(128),
                             ),
                           );
                         },
@@ -484,15 +535,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                         showTitles: true,
                         reservedSize: 30,
                         getTitlesWidget: (value, meta) {
-                          if (value.toInt() >= sortedDates.length) return const Text('');
-                          final date = DateTime.parse(sortedDates[value.toInt()]);
+                          if (value.toInt() >= sortedDates.length)
+                            return const Text('');
+                          final date = DateTime.parse(
+                            sortedDates[value.toInt()],
+                          );
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
                               DateFormat('M/d').format(date),
                               style: TextStyle(
                                 fontSize: 10,
-                                color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withAlpha(128),
                               ),
                             ),
                           );
@@ -502,9 +558,21 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                   ),
                   borderData: FlBorderData(show: false),
                   lineBarsData: [
-                    _buildMacroLine(sortedDates, 'protein', const Color(0xFF4ECDC4)),
-                    _buildMacroLine(sortedDates, 'carbs', const Color(0xFFFFBE0B)),
-                    _buildMacroLine(sortedDates, 'fat', const Color(0xFFFF006E)),
+                    _buildMacroLine(
+                      sortedDates,
+                      'protein',
+                      const Color(0xFF4ECDC4),
+                    ),
+                    _buildMacroLine(
+                      sortedDates,
+                      'carbs',
+                      const Color(0xFFFFBE0B),
+                    ),
+                    _buildMacroLine(
+                      sortedDates,
+                      'fat',
+                      const Color(0xFFFF006E),
+                    ),
                   ],
                   minY: 0,
                   maxY: maxValue * 1.2,
@@ -517,14 +585,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     );
   }
 
-  LineChartBarData _buildMacroLine(List<String> dates, String macro, Color color) {
+  LineChartBarData _buildMacroLine(
+    List<String> dates,
+    String macro,
+    Color color,
+  ) {
     return LineChartBarData(
       spots: List.generate(
         dates.length,
-        (index) => FlSpot(
-          index.toDouble(),
-          _dailyMacros[dates[index]]![macro]!,
-        ),
+        (index) =>
+            FlSpot(index.toDouble(), _dailyMacros[dates[index]]![macro]!),
       ),
       isCurved: true,
       color: color,
@@ -550,10 +620,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 4),
         Text(
@@ -635,11 +702,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
   List<PieChartSectionData> _buildPieSections(Map<String, int> mealCounts) {
     final total = mealCounts.values.reduce((a, b) => a + b);
-    
+
     return mealCounts.entries.map((entry) {
       final mealInfo = _getMealInfo(entry.key);
       final percentage = (entry.value / total * 100).toStringAsFixed(0);
-      
+
       return PieChartSectionData(
         value: entry.value.toDouble(),
         title: '$percentage%',
@@ -670,30 +737,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   }
 
   Widget _buildEmptyChart(String message) {
-    return Card(
-      elevation: 0,
-      child: Container(
-        height: 200,
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.bar_chart_rounded,
-              size: 60,
-              color: Theme.of(context).colorScheme.onSurface.withAlpha(77),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              style: TextStyle(
-                fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return EmptyStateWidget(
+      type: EmptyStateType.noData,
+      title: 'No Data Yet',
+      message: message,
     );
   }
 }
