@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:privacy_first_nutrition_tracking_app/screens/home_screen.dart';
 import 'package:privacy_first_nutrition_tracking_app/screens/search_screen.dart';
@@ -9,6 +10,15 @@ import 'package:privacy_first_nutrition_tracking_app/utils/storage_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load environment variables
+  try {
+    await dotenv.load(fileName: ".env");
+    debugPrint('✅ Environment variables loaded');
+  } catch (e) {
+    debugPrint('⚠️ .env file not found. Gemini AI features will be disabled.');
+    debugPrint('Create a .env file with your GEMINI_API_KEY to enable AI insights.');
+  }
   
   // Initialize storage helper (this initializes SharedPreferences)
   await StorageHelper.init();

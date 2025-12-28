@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../models/user_profile.dart';
 import '../models/food_entry.dart';
 import '../utils/storage_helper.dart';
@@ -31,16 +30,24 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
 
     final profile = await StorageHelper.getUserProfile();
     final entries = await StorageHelper.getFoodEntries();
-
-    // Get last 48 hours is ideally better, but let's get recent 10-20 entries
     final recentEntries = entries.reversed.take(20).toList();
 
+    debugPrint('🔍 AI Insights Screen: Loading insights...');
+
     String? insights;
-    if (profile != null) {
+    if (profile != null && recentEntries.isNotEmpty) {
       insights = await _geminiService.getNutritionInsights(
         profile,
         recentEntries,
       );
+      debugPrint('📝 Insights length: ${insights?.length ?? 0}');
+    } else {
+      if (profile == null) {
+        insights =
+            "Please set up your profile first to get personalized insights.";
+      } else if (recentEntries.isEmpty) {
+        insights = "Start logging your meals to get personalized AI insights!";
+      }
     }
 
     if (mounted) {
@@ -53,51 +60,40 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
     }
   }
 
-  Future<void> _launchApiStudioUrl() async {
-    final url = Uri.parse('https://aistudio.google.com/app/apikey');
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not launch AI Studio link')),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text('AI Nutrition Coach'),
+        backgroundColor: Colors.purple,
+        foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
-          IconButton(onPressed: _loadInsights, icon: const Icon(Icons.refresh)),
+          IconButton(
+            onPressed: _loadInsights,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh insights',
+          ),
         ],
       ),
       body: _isLoading
           ? _buildLoadingState()
-          : _insights == null
-          ? _buildNoApiKeyDataState()
+          : _insights == null || _insights!.isEmpty
+          ? _buildNoDataState()
           : SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(20),
-              child: AnimationLimiter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: AnimationConfiguration.toStaggeredList(
-                    duration: const Duration(milliseconds: 500),
-                    childAnimationBuilder: (widget) => SlideAnimation(
-                      verticalOffset: 50.0,
-                      child: FadeInAnimation(child: widget),
-                    ),
-                    children: [
-                      _buildCoachHeader(),
-                      const SizedBox(height: 24),
-                      _buildInsightsCard(),
-                      const SizedBox(height: 24),
-                      _buildDataSummary(),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCoachHeader(),
+                  const SizedBox(height: 20),
+                  _buildInsightsCard(),
+                  const SizedBox(height: 20),
+                  _buildDataSummary(),
+                  const SizedBox(height: 40),
+                ],
               ),
             ),
     );
@@ -111,16 +107,19 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
           const SizedBox(
             width: 60,
             height: 60,
-            child: CircularProgressIndicator(strokeWidth: 3),
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
+            ),
           ),
           const SizedBox(height: 24),
           const Text(
-            'Consulting with Gemini...',
+            'Consulting with Gemini AI...',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Analyzing your habits and goals',
+            'Analyzing your nutrition data',
             style: TextStyle(color: Colors.grey.shade600),
           ),
         ],
@@ -128,48 +127,49 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
     );
   }
 
-  Widget _buildNoApiKeyDataState() {
+  Widget _buildNoDataState() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.psychology_outlined, size: 80, color: Colors.grey),
+            Icon(
+              Icons.psychology_outlined,
+              size: 80,
+              color: Colors.grey.shade400,
+            ),
             const SizedBox(height: 24),
             const Text(
-              'Coach is Sleeping',
+              'No Insights Yet',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'To enable AI coaching, follow these simple steps:',
+            Text(
+              _userProfile == null
+                  ? 'Please set up your profile first to get personalized insights.'
+                  : _recentEntries.isEmpty
+                  ? 'Start logging your meals to get AI-powered nutrition insights!'
+                  : 'Unable to generate insights at this time. Please try again.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
             ),
-            const SizedBox(height: 20),
-            _buildStepRow('1', 'Get a free API Key from Google AI Studio'),
-            const SizedBox(height: 12),
-            _buildStepRow('2', 'Go to the Profile tab in this app'),
-            const SizedBox(height: 12),
-            _buildStepRow('3', 'Open Gemini Assistant in Settings'),
-            const SizedBox(height: 12),
-            _buildStepRow('4', 'Paste your key and click Save'),
             const SizedBox(height: 32),
-            TextButton.icon(
-              onPressed: _launchApiStudioUrl,
-              icon: const Icon(Icons.open_in_new),
-              label: const Text('Get your Gemini API Key here'),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
+            ElevatedButton.icon(
               onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               icon: const Icon(Icons.arrow_back),
-              label: const Text('Go to Profile'),
+              label: const Text('Go Back'),
             ),
           ],
         ),
@@ -177,111 +177,137 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
     );
   }
 
-  Widget _buildStepRow(String number, String text) {
-    return Row(
-      children: [
-        Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            color: Colors.purple.withOpacity(0.1),
-            shape: BoxShape.circle,
+  Widget _buildCoachHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.purple.shade400, Colors.purple.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.purple.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Center(
-            child: Text(
-              number,
-              style: const TextStyle(
-                color: Colors.purple,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.psychology, color: Colors.white, size: 32),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Personal AI Coach',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Analysis for ${_userProfile?.name ?? "User"}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCoachHeader() {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.purple.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.psychology, color: Colors.purple, size: 32),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Personal AI Coach',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              Text(
-                'Analysis for ${_userProfile?.name ?? "User"}',
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildInsightsCard() {
     return Card(
-      elevation: 0,
-      color: Colors.purple.withOpacity(0.05),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: Colors.purple.withOpacity(0.1)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.purple.withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
               children: [
-                Icon(Icons.auto_awesome, color: Colors.purple, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'Coach\'s Advice',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
                     color: Colors.purple,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Your Personalized Insights',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purple,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              _insights ?? '',
-              style: const TextStyle(
-                fontSize: 15,
-                height: 1.6,
-                letterSpacing: 0.2,
+          ),
+
+          // Content - LARGE SCROLLABLE AREA
+          Container(
+            constraints: BoxConstraints(
+              minHeight: 400, // MINIMUM HEIGHT
+              maxHeight:
+                  MediaQuery.of(context).size.height * 0.6, // 60% of screen
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Markdown(
+              data: _insights ?? 'No insights available',
+              shrinkWrap: true,
+              physics: const BouncingScrollPhysics(),
+              styleSheet: MarkdownStyleSheet(
+                p: const TextStyle(
+                  fontSize: 17,
+                  height: 1.8,
+                  letterSpacing: 0.3,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w400,
+                ),
+                strong: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -296,27 +322,33 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
         ),
         const SizedBox(height: 12),
         Card(
-          elevation: 0,
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               children: [
                 _buildSummaryRow(
                   'Goal',
                   _userProfile?.goalDescription ?? 'N/A',
                   Icons.flag,
+                  Colors.blue,
                 ),
-                const Divider(height: 24),
+                const Divider(height: 32),
                 _buildSummaryRow(
                   'Recent Data',
                   '${_recentEntries.length} entries analyzed',
                   Icons.analytics_outlined,
+                  Colors.green,
                 ),
-                const Divider(height: 24),
+                const Divider(height: 32),
                 _buildSummaryRow(
-                  'Privacy',
-                  'Your data is processed locally.',
-                  Icons.lock_outline,
+                  'AI Model',
+                  'Gemini 2.5 Flash',
+                  Icons.smart_toy,
+                  Colors.purple,
                 ),
               ],
             ),
@@ -326,14 +358,46 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, IconData icon) {
+  Widget _buildSummaryRow(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.grey),
-        const SizedBox(width: 12),
-        Text(label, style: TextStyle(color: Colors.grey.shade600)),
-        const Spacer(),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 22, color: color),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
