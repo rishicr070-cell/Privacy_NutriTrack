@@ -1,204 +1,185 @@
 import 'dart:typed_data';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 
+/// Food classification service using TFLite model
+/// Replaces the previous YOLO-based detector with a classification approach
 class FoodDetectorServiceImpl {
   Interpreter? _interpreter;
+  List<String> _labels = [];
   bool _isModelLoaded = false;
+
+  // Model configuration (will be detected dynamically)
+  int _inputSize = 224; // Default, will be updated after model inspection
 
   Future<void> loadModel() async {
     if (_isModelLoaded) return;
-    
+
     try {
-      _interpreter = await Interpreter.fromAsset(
-        'assets/models/Fooddetector.tflite',
+      // Load the TFLite model
+      _interpreter = await Interpreter.fromAsset('assets/models/model.tflite');
+
+      // Load labels
+      final labelsData = await rootBundle.loadString(
+        'assets/models/labels.txt',
       );
+      _labels = labelsData
+          .split('\n')
+          .where((label) => label.trim().isNotEmpty)
+          .toList();
+
+      // Inspect model to get actual input size
+      final inputShape = _interpreter!.getInputTensor(0).shape;
+      if (inputShape.length >= 2) {
+        _inputSize = inputShape[1]; // Assuming [1, size, size, 3]
+      }
+
       _isModelLoaded = true;
-      debugPrint('✅ Fooddetector.tflite loaded');
-      debugPrint('   Input: [1,640,640,3] float32');
-      debugPrint('   Output: [1,24,8400] float32');
-    } catch (e) {
+      debugPrint('✅ Food classification model loaded');
+      debugPrint('   Model: model.tflite');
+      debugPrint('   Input shape: $inputShape');
+      debugPrint('   Input size: $_inputSize x $_inputSize');
+      debugPrint('   Labels: ${_labels.length} food classes');
+      debugPrint('   Output shape: ${_interpreter!.getOutputTensor(0).shape}');
+    } catch (e, stackTrace) {
       debugPrint('❌ Model loading error: $e');
+      debugPrint('Stack trace: $stackTrace');
       _isModelLoaded = false;
       rethrow;
     }
   }
 
+  /// Detect/classify food from image bytes
   Future<Map<String, dynamic>> detectFood(
     Uint8List imageBytes,
-    List<String> labels,
+    List<String> labels, // Kept for compatibility, but we use loaded labels
   ) async {
     if (!_isModelLoaded || _interpreter == null) {
       await loadModel();
     }
 
     try {
-      // 1. PREPROCESS: Decode and resize to 640x640
+      // 1. PREPROCESS: Decode and resize image
       final decoded = img.decodeImage(imageBytes);
       if (decoded == null) {
         return _errorResult('Invalid image');
       }
 
-      final resized = img.copyResize(
+      // Center crop to square
+      final size = math.min(decoded.width, decoded.height);
+      final offsetX = (decoded.width - size) ~/ 2;
+      final offsetY = (decoded.height - size) ~/ 2;
+      final cropped = img.copyCrop(
         decoded,
-        width: 640,
-        height: 640,
+        x: offsetX,
+        y: offsetY,
+        width: size,
+        height: size,
+      );
+
+      // Resize to model input size
+      final resized = img.copyResize(
+        cropped,
+        width: _inputSize,
+        height: _inputSize,
         interpolation: img.Interpolation.linear,
       );
 
-      // Convert to float32 [1,640,640,3] with 0-1 normalization
-      final input = _imageToByteListFloat32(resized);
+      // Convert to uint8 input tensor (0-255 range, no normalization)
+      final input = _imageToUint8Tensor(resized);
 
-      // 2. ALLOCATE OUTPUT: [1, 24, 8400]
-      final output = List.generate(
-        1,
-        (_) => List.generate(
-          24,
-          (_) => List<double>.filled(8400, 0.0),
-        ),
-      );
+      // 2. ALLOCATE OUTPUT
+      final outputShape = _interpreter!.getOutputTensor(0).shape;
+      final numClasses = outputShape[1];
+      final output = List.filled(numClasses, 0.0).reshape([1, numClasses]);
 
       // 3. RUN INFERENCE
-      debugPrint('Running inference...');
+      debugPrint('🔍 Running classification inference...');
       _interpreter!.run(input, output);
       debugPrint('✅ Inference complete');
 
-      // 4. PARSE DETECTIONS
-      return _parseDetections(output, labels);
-
+      // 4. POSTPROCESS: Convert output to doubles and apply softmax
+      final outputList = (output[0] as List)
+          .map((e) => (e as num).toDouble())
+          .toList();
+      final probabilities = _softmax(outputList);
+      return _parseClassificationResults(probabilities);
     } catch (e, stackTrace) {
-      debugPrint('❌ Detection error: $e');
+      debugPrint('❌ Classification error: $e');
       debugPrint('Stack: $stackTrace');
       return _errorResult('Error: $e');
     }
   }
 
-  /// Convert image to Float32 tensor [1,640,640,3] normalized to 0-1
-  Uint8List _imageToByteListFloat32(img.Image image) {
-    const inputSize = 640;
-    final convertedBytes = Float32List(1 * inputSize * inputSize * 3);
-    int pixelIndex = 0;
+  /// Convert image to Uint8 tensor [1, size, size, 3] with values 0-255
+  List<List<List<List<int>>>> _imageToUint8Tensor(img.Image image) {
+    final tensor = List.generate(
+      1,
+      (_) => List.generate(
+        _inputSize,
+        (_) => List.generate(_inputSize, (_) => List<int>.filled(3, 0)),
+      ),
+    );
 
-    for (int y = 0; y < inputSize; y++) {
-      for (int x = 0; x < inputSize; x++) {
+    for (int y = 0; y < _inputSize; y++) {
+      for (int x = 0; x < _inputSize; x++) {
         final pixel = image.getPixelSafe(x, y);
-        convertedBytes[pixelIndex++] = pixel.r / 255.0;
-        convertedBytes[pixelIndex++] = pixel.g / 255.0;
-        convertedBytes[pixelIndex++] = pixel.b / 255.0;
+        tensor[0][y][x][0] = pixel.r.toInt(); // R (0-255)
+        tensor[0][y][x][1] = pixel.g.toInt(); // G (0-255)
+        tensor[0][y][x][2] = pixel.b.toInt(); // B (0-255)
       }
     }
 
-    return convertedBytes.buffer.asUint8List();
+    return tensor;
   }
 
-  /// Parse YOLO output [1, 24, 8400]
-  /// Channels 0-3: x, y, w, h (bbox)
-  /// Channels 4-23: 20 class scores
-  Map<String, dynamic> _parseDetections(
-    List<List<List<double>>> output,
-    List<String> labels,
-  ) {
-    const numBoxes = 8400;
-    const numClasses = 20;
-    const scoreThreshold = 0.5;
+  /// Apply softmax to convert logits to probabilities
+  List<double> _softmax(List<double> logits) {
+    final maxLogit = logits.reduce(math.max);
+    final exps = logits.map((x) => math.exp(x - maxLogit)).toList();
+    final sumExps = exps.reduce((a, b) => a + b);
+    return exps.map((x) => x / sumExps).toList();
+  }
 
-    double bestScore = 0.0;
-    String bestLabel = 'Unknown';
-    List<double>? bestBbox;
-    int bestClassIndex = -1;
-
-    List<Map<String, dynamic>> allDetections = [];
-
-    // Iterate through all 8400 detection boxes
-    for (int i = 0; i < numBoxes; i++) {
-      // Read bounding box from channels 0-3
-      final double x = output[0][0][i];
-      final double y = output[0][1][i];
-      final double w = output[0][2][i];
-      final double h = output[0][3][i];
-
-      // Read class scores from channels 4-23
-      int bestClass = -1;
-      double maxClassScore = 0.0;
-
-      for (int c = 0; c < numClasses; c++) {
-        final score = output[0][4 + c][i];
-        if (score > maxClassScore) {
-          maxClassScore = score;
-          bestClass = c;
-        }
-      }
-
-      // Keep detections above threshold
-      if (maxClassScore > scoreThreshold && 
-          bestClass >= 0 && 
-          bestClass < labels.length) {
-        
-        allDetections.add({
-          'label': labels[bestClass],
-          'confidence': maxClassScore,
-          'bbox': [x, y, w, h],
-          'class_index': bestClass,
-        });
-
-        // Track best detection
-        if (maxClassScore > bestScore) {
-          bestScore = maxClassScore;
-          bestLabel = labels[bestClass];
-          bestBbox = [x, y, w, h];
-          bestClassIndex = bestClass;
-        }
-      }
+  /// Parse classification results and return top-k predictions
+  Map<String, dynamic> _parseClassificationResults(List<double> probabilities) {
+    // Create list of (label, confidence) pairs
+    final predictions = <Map<String, dynamic>>[];
+    for (int i = 0; i < probabilities.length && i < _labels.length; i++) {
+      predictions.add({'label': _labels[i], 'confidence': probabilities[i]});
     }
 
-    // Sort all detections by confidence
-    allDetections.sort((a, b) => 
-      (b['confidence'] as double).compareTo(a['confidence'] as double)
+    // Sort by confidence descending
+    predictions.sort(
+      (a, b) =>
+          (b['confidence'] as double).compareTo(a['confidence'] as double),
     );
 
-    // Create all_predictions for UI compatibility
-    List<Map<String, dynamic>> allPredictions = [];
-    for (int c = 0; c < labels.length && c < numClasses; c++) {
-      // Find best score for this class
-      double maxForClass = 0.0;
-      for (var det in allDetections) {
-        if (det['class_index'] == c) {
-          maxForClass = det['confidence'] as double;
-          break;
-        }
-      }
-      allPredictions.add({
-        'label': labels[c],
-        'confidence': maxForClass,
-      });
-    }
-    allPredictions.sort((a, b) => 
-      (b['confidence'] as double).compareTo(a['confidence'] as double)
+    // Get top prediction
+    final topPrediction = predictions.first;
+    final topLabel = topPrediction['label'] as String;
+    final topConfidence = topPrediction['confidence'] as double;
+
+    debugPrint(
+      '🍽️ Classification → $topLabel (${(topConfidence * 100).toStringAsFixed(1)}%)',
     );
-
-    debugPrint('Fooddetector → $bestLabel (${(bestScore * 100).toStringAsFixed(1)}%)');
-    debugPrint('Total detections above threshold: ${allDetections.length}');
-    if (bestBbox != null) {
-      debugPrint('BBox: [${bestBbox.map((v) => v.toStringAsFixed(1)).join(", ")}]');
+    debugPrint('   Top 5 predictions:');
+    for (int i = 0; i < math.min(5, predictions.length); i++) {
+      final pred = predictions[i];
+      debugPrint(
+        '   ${i + 1}. ${pred['label']}: ${((pred['confidence'] as double) * 100).toStringAsFixed(1)}%',
+      );
     }
 
-    if (bestScore < 0.25) {
-      return {
-        'label': 'Unknown (${(bestScore * 100).toStringAsFixed(1)}%)',
-        'confidence': bestScore,
-        'bbox': bestBbox,
-        'all_predictions': allPredictions,
-        'detections': allDetections,
-      };
-    }
-
+    // Return result in format compatible with existing code
     return {
-      'label': bestLabel,
-      'confidence': bestScore,
-      'bbox': bestBbox,
-      'all_predictions': allPredictions,
-      'detections': allDetections,
+      'label': topLabel,
+      'confidence': topConfidence,
+      'all_predictions': predictions.take(10).toList(), // Top 10 for UI
+      'bbox': null, // No bounding box for classification
     };
   }
 
@@ -207,6 +188,7 @@ class FoodDetectorServiceImpl {
       'label': message,
       'confidence': 0.0,
       'all_predictions': [],
+      'bbox': null,
     };
   }
 
@@ -214,6 +196,7 @@ class FoodDetectorServiceImpl {
     _interpreter?.close();
     _interpreter = null;
     _isModelLoaded = false;
-    debugPrint('Fooddetector disposed');
+    _labels.clear();
+    debugPrint('Food classifier disposed');
   }
 }

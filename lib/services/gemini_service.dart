@@ -238,7 +238,7 @@ STRICT REQUIREMENTS:
 
 **🍽️ Next Meal:** [2 foods with estimated macro contribution]
 
-Be data-driven, encouraging, and actionable. Always cite numbers and reference actual foods eaten.
+Be data-driven, encouraging, and actionable , if more of junk foods eaten tell the damage. Always cite numbers and reference actual foods eaten.
 """;
 
       final result = await _generateContent(prompt);
