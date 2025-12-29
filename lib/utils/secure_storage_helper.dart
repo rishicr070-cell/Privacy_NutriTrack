@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Secure storage helper for sensitive data
@@ -108,6 +109,82 @@ class SecureStorageHelper {
     } catch (e) {
       print('Error reading notification preference: $e');
       return false;
+    }
+  }
+
+  /// Save water reminder enabled preference
+  Future<void> setWaterReminderEnabled(bool enabled) async {
+    try {
+      await _storage.write(
+        key: 'water_reminder_enabled',
+        value: enabled.toString(),
+      );
+    } catch (e) {
+      print('Error saving water reminder preference: $e');
+    }
+  }
+
+  /// Get water reminder enabled preference
+  Future<bool> getWaterReminderEnabled() async {
+    try {
+      final value = await _storage.read(key: 'water_reminder_enabled');
+      return value == 'true';
+    } catch (e) {
+      print('Error reading water reminder preference: $e');
+      return false;
+    }
+  }
+
+  /// Save water reminder interval in minutes
+  Future<void> setWaterReminderInterval(int minutes) async {
+    try {
+      await _storage.write(
+        key: 'water_reminder_interval',
+        value: minutes.toString(),
+      );
+    } catch (e) {
+      print('Error saving water reminder interval: $e');
+    }
+  }
+
+  /// Get water reminder interval in minutes
+  Future<int> getWaterReminderInterval() async {
+    try {
+      final value = await _storage.read(key: 'water_reminder_interval');
+      if (value != null) {
+        return int.parse(value);
+      }
+      return 240; // Default: 4 hours
+    } catch (e) {
+      print('Error reading water reminder interval: $e');
+      return 240;
+    }
+  }
+
+  /// Get favorite foods set
+  Future<Set<String>> getFavoriteFoods() async {
+    try {
+      final value = await _storage.read(key: 'favorite_foods');
+      if (value != null) {
+        final List<dynamic> list = jsonDecode(value);
+        return Set<String>.from(list);
+      }
+      return {};
+    } catch (e) {
+      print('Error reading favorite foods: $e');
+      return {};
+    }
+  }
+
+  /// Set favorite foods
+  Future<void> setFavoriteFoods(Set<String> favorites) async {
+    try {
+      await _storage.write(
+        key: 'favorite_foods',
+        value: jsonEncode(favorites.toList()),
+      );
+    } catch (e) {
+      print('Error saving favorite foods: $e');
     }
   }
 

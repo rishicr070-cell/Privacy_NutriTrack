@@ -26,10 +26,10 @@ class DatabaseHelper {
     final databasesPath = await getDatabasesPath();
     final path = join(databasesPath, 'nutritrack.db');
 
-    // Open/create the database with version 1
+    // Open/create the database with version 2
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -70,7 +70,8 @@ class DatabaseHelper {
         dailyFatGoal REAL NOT NULL,
         dailyWaterGoal REAL NOT NULL,
         healthConditions TEXT,
-        allergies TEXT
+        allergies TEXT,
+        goalType TEXT DEFAULT 'maintenance'
       )
     ''');
 
@@ -95,10 +96,14 @@ class DatabaseHelper {
 
   /// Handle database upgrades
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Handle future database migrations here
-    if (oldVersion < newVersion) {
-      print('Upgrading database from version $oldVersion to $newVersion');
-      // Add migration logic as needed
+    print('Upgrading database from version $oldVersion to $newVersion');
+
+    // Migration from version 1 to 2: Add goalType column
+    if (oldVersion < 2) {
+      await db.execute(
+        "ALTER TABLE user_profile ADD COLUMN goalType TEXT DEFAULT 'maintenance'",
+      );
+      print('Added goalType column to user_profile table');
     }
   }
 
@@ -109,22 +114,18 @@ class DatabaseHelper {
     try {
       final db = await database;
       print('Inserting food entry: ${entry.toJson()}'); // Debug log
-      final result = await db.insert(
-        'food_entries',
-        {
-          'id': entry.id,
-          'foodName': entry.name,
-          'calories': entry.calories,
-          'protein': entry.protein,
-          'carbs': entry.carbs,
-          'fat': entry.fat,
-          'servingSize': entry.servingSize,
-          'servingUnit': entry.servingUnit,
-          'mealType': entry.mealType,
-          'timestamp': entry.timestamp.millisecondsSinceEpoch,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      final result = await db.insert('food_entries', {
+        'id': entry.id,
+        'foodName': entry.name,
+        'calories': entry.calories,
+        'protein': entry.protein,
+        'carbs': entry.carbs,
+        'fat': entry.fat,
+        'servingSize': entry.servingSize,
+        'servingUnit': entry.servingUnit,
+        'mealType': entry.mealType,
+        'timestamp': entry.timestamp.millisecondsSinceEpoch,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
       print('Food entry inserted with id: $result'); // Debug log
       return result;
     } catch (e) {
@@ -141,28 +142,30 @@ class DatabaseHelper {
         'food_entries',
         orderBy: 'timestamp DESC',
       );
-      
+
       return List.generate(maps.length, (i) {
         return FoodEntry(
           id: maps[i]['id'] as String,
           name: maps[i]['foodName'] as String,
-          calories: maps[i]['calories'] is int 
-              ? (maps[i]['calories'] as int).toDouble() 
+          calories: maps[i]['calories'] is int
+              ? (maps[i]['calories'] as int).toDouble()
               : maps[i]['calories'] as double,
-          protein: maps[i]['protein'] is int 
-              ? (maps[i]['protein'] as int).toDouble() 
+          protein: maps[i]['protein'] is int
+              ? (maps[i]['protein'] as int).toDouble()
               : maps[i]['protein'] as double,
-          carbs: maps[i]['carbs'] is int 
-              ? (maps[i]['carbs'] as int).toDouble() 
+          carbs: maps[i]['carbs'] is int
+              ? (maps[i]['carbs'] as int).toDouble()
               : maps[i]['carbs'] as double,
-          fat: maps[i]['fat'] is int 
-              ? (maps[i]['fat'] as int).toDouble() 
+          fat: maps[i]['fat'] is int
+              ? (maps[i]['fat'] as int).toDouble()
               : maps[i]['fat'] as double,
-          servingSize: maps[i]['servingSize'] is int 
-              ? (maps[i]['servingSize'] as int).toDouble() 
+          servingSize: maps[i]['servingSize'] is int
+              ? (maps[i]['servingSize'] as int).toDouble()
               : maps[i]['servingSize'] as double,
           servingUnit: maps[i]['servingUnit'] as String,
-          timestamp: DateTime.fromMillisecondsSinceEpoch(maps[i]['timestamp'] as int),
+          timestamp: DateTime.fromMillisecondsSinceEpoch(
+            maps[i]['timestamp'] as int,
+          ),
           mealType: maps[i]['mealType'] as String,
         );
       });
@@ -181,10 +184,7 @@ class DatabaseHelper {
     final List<Map<String, dynamic>> maps = await db.query(
       'food_entries',
       where: 'timestamp BETWEEN ? AND ?',
-      whereArgs: [
-        start.millisecondsSinceEpoch,
-        end.millisecondsSinceEpoch,
-      ],
+      whereArgs: [start.millisecondsSinceEpoch, end.millisecondsSinceEpoch],
       orderBy: 'timestamp DESC',
     );
 
@@ -209,11 +209,7 @@ class DatabaseHelper {
   /// Delete a food entry
   Future<int> deleteFoodEntry(String id) async {
     final db = await database;
-    return await db.delete(
-      'food_entries',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('food_entries', where: 'id = ?', whereArgs: [id]);
   }
 
   /// Delete all food entries
@@ -230,19 +226,19 @@ class DatabaseHelper {
       final db = await database;
       final profileMap = profile.toJson();
       profileMap['id'] = 1; // Always use ID 1 for single user profile
-      
+
       // Convert lists to comma-separated strings
       profileMap['healthConditions'] = profile.healthConditions.join(',');
       profileMap['allergies'] = profile.allergies.join(',');
-      
+
       print('Saving profile: $profileMap'); // Debug log
-      
+
       final result = await db.insert(
         'user_profile',
         profileMap,
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-      
+
       print('Profile saved successfully, result: $result'); // Debug log
       return result;
     } catch (e) {
@@ -264,11 +260,21 @@ class DatabaseHelper {
       if (maps.isEmpty) return null;
 
       final map = Map<String, dynamic>.from(maps.first);
-      
+
       // Parse the comma-separated strings back to lists
-      map['healthConditions'] = (map['healthConditions'] as String?)?.split(',').where((s) => s.isNotEmpty).toList() ?? [];
-      map['allergies'] = (map['allergies'] as String?)?.split(',').where((s) => s.isNotEmpty).toList() ?? [];
-      
+      map['healthConditions'] =
+          (map['healthConditions'] as String?)
+              ?.split(',')
+              .where((s) => s.isNotEmpty)
+              .toList() ??
+          [];
+      map['allergies'] =
+          (map['allergies'] as String?)
+              ?.split(',')
+              .where((s) => s.isNotEmpty)
+              .toList() ??
+          [];
+
       return UserProfile.fromJson(map);
     } catch (e) {
       print('Error loading profile from database: $e');
@@ -279,11 +285,7 @@ class DatabaseHelper {
   /// Delete user profile
   Future<int> deleteUserProfile() async {
     final db = await database;
-    return await db.delete(
-      'user_profile',
-      where: 'id = ?',
-      whereArgs: [1],
-    );
+    return await db.delete('user_profile', where: 'id = ?', whereArgs: [1]);
   }
 
   // ==================== WATER INTAKE ====================
@@ -291,11 +293,10 @@ class DatabaseHelper {
   /// Save water intake for a specific date
   Future<int> saveWaterIntake(String date, int amount) async {
     final db = await database;
-    return await db.insert(
-      'water_intake',
-      {'date': date, 'amount': amount},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    return await db.insert('water_intake', {
+      'date': date,
+      'amount': amount,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Get water intake for a specific date
@@ -338,11 +339,10 @@ class DatabaseHelper {
   /// Save weight for a specific date
   Future<int> saveWeight(String date, double weight) async {
     final db = await database;
-    return await db.insert(
-      'weight_log',
-      {'date': date, 'weight': weight},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    return await db.insert('weight_log', {
+      'date': date,
+      'weight': weight,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Get weight for a specific date
@@ -376,11 +376,7 @@ class DatabaseHelper {
   /// Delete weight log for a specific date
   Future<int> deleteWeight(String date) async {
     final db = await database;
-    return await db.delete(
-      'weight_log',
-      where: 'date = ?',
-      whereArgs: [date],
-    );
+    return await db.delete('weight_log', where: 'date = ?', whereArgs: [date]);
   }
 
   // ==================== DATABASE MANAGEMENT ====================
@@ -405,18 +401,24 @@ class DatabaseHelper {
   /// Get database statistics
   Future<Map<String, int>> getDatabaseStats() async {
     final db = await database;
-    
-    final foodCount = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM food_entries'),
-    ) ?? 0;
-    
-    final waterCount = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM water_intake'),
-    ) ?? 0;
-    
-    final weightCount = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM weight_log'),
-    ) ?? 0;
+
+    final foodCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM food_entries'),
+        ) ??
+        0;
+
+    final waterCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM water_intake'),
+        ) ??
+        0;
+
+    final weightCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM weight_log'),
+        ) ??
+        0;
 
     return {
       'food_entries': foodCount,

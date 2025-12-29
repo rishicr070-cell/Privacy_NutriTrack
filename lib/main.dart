@@ -7,25 +7,39 @@ import 'package:privacy_first_nutrition_tracking_app/screens/analytics_screen.da
 import 'package:privacy_first_nutrition_tracking_app/screens/profile_screen.dart';
 import 'package:privacy_first_nutrition_tracking_app/theme/theme_manager.dart';
 import 'package:privacy_first_nutrition_tracking_app/utils/storage_helper.dart';
+import 'package:privacy_first_nutrition_tracking_app/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Load environment variables
   try {
     await dotenv.load(fileName: ".env");
     debugPrint('✅ Environment variables loaded');
   } catch (e) {
     debugPrint('⚠️ .env file not found. Gemini AI features will be disabled.');
-    debugPrint('Create a .env file with your GEMINI_API_KEY to enable AI insights.');
+    debugPrint(
+      'Create a .env file with your GEMINI_API_KEY to enable AI insights.',
+    );
   }
-  
+
   // Initialize storage helper (this initializes SharedPreferences)
   await StorageHelper.init();
-  
+
+  // Initialize notification service
+  await NotificationService.init();
+  debugPrint('✅ Notification service initialized');
+
+  // Schedule water reminders if enabled
+  final remindersEnabled = await StorageHelper.getWaterReminderEnabled();
+  if (remindersEnabled) {
+    await NotificationService.scheduleWaterReminders();
+    debugPrint('✅ Water reminders scheduled');
+  }
+
   // Load theme preference
   final isDarkMode = await StorageHelper.isDarkMode();
-  
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeManager()..setDarkMode(isDarkMode),
@@ -44,7 +58,9 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppThemes.lightTheme,
       darkTheme: AppThemes.darkTheme,
-      themeMode: context.watch<ThemeManager>().isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      themeMode: context.watch<ThemeManager>().isDarkMode
+          ? ThemeMode.dark
+          : ThemeMode.light,
       home: const AppShell(),
     );
   }
@@ -57,7 +73,8 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
+class _AppShellState extends State<AppShell>
+    with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
   late AnimationController _animationController;
 
@@ -95,10 +112,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _widgetOptions,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _widgetOptions),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -124,17 +138,26 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             ),
             NavigationDestination(
               icon: Icon(Icons.search_outlined),
-              selectedIcon: Icon(Icons.search_rounded, color: Color(0xFF00C9FF)),
+              selectedIcon: Icon(
+                Icons.search_rounded,
+                color: Color(0xFF00C9FF),
+              ),
               label: 'Search',
             ),
             NavigationDestination(
               icon: Icon(Icons.bar_chart_outlined),
-              selectedIcon: Icon(Icons.bar_chart_rounded, color: Color(0xFF00C9FF)),
+              selectedIcon: Icon(
+                Icons.bar_chart_rounded,
+                color: Color(0xFF00C9FF),
+              ),
               label: 'Analytics',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person_rounded, color: Color(0xFF00C9FF)),
+              selectedIcon: Icon(
+                Icons.person_rounded,
+                color: Color(0xFF00C9FF),
+              ),
               label: 'Profile',
             ),
           ],

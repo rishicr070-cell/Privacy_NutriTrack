@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../models/user_profile.dart';
 import '../utils/storage_helper.dart';
 import '../theme/theme_manager.dart';
@@ -21,7 +20,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   UserProfile? _userProfile;
   Map<String, double> _weightData = {};
   bool _isLoading = true;
-  bool _isAiEnabled = false;
   final TextEditingController _geminiApiKeyController = TextEditingController();
 
   @override
@@ -52,14 +50,11 @@ class _ProfileScreenState extends State<ProfileScreen>
       // For now, let's just get the key.
       final apiKey = await StorageHelper.getGeminiApiKey();
 
-      final aiEnabled = apiKey != null && apiKey.isNotEmpty;
-
       if (mounted) {
         _geminiApiKeyController.text = apiKey ?? '';
         setState(() {
           _userProfile = profile;
           _weightData = weightData;
-          _isAiEnabled = aiEnabled;
           _isLoading = false;
         });
       }
@@ -108,17 +103,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   void _toggleDarkMode(bool value) {
     if (value != context.read<ThemeManager>().isDarkMode) {
       context.read<ThemeManager>().toggleTheme();
-    }
-  }
-
-  Future<void> _launchApiStudioUrl() async {
-    final url = Uri.parse('https://aistudio.google.com/app/apikey');
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not launch AI Studio link')),
-        );
-      }
     }
   }
 
@@ -876,23 +860,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               const Divider(height: 1),
               ListTile(
-                leading: Icon(Icons.psychology, color: Colors.purple.shade300),
-                title: const Text('Gemini Assistant'),
-                subtitle: const Text('AI-powered nutrition insights'),
-                trailing: Switch(
-                  value: _isAiEnabled,
-                  onChanged: (value) {
-                    if (value && _geminiApiKeyController.text.isEmpty) {
-                      _showApiKeyDialog();
-                    } else {
-                      setState(() => _isAiEnabled = value);
-                    }
-                  },
-                ),
-                onTap: _showApiKeyDialog,
-              ),
-              const Divider(height: 1),
-              ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: const Text('Clear All Data'),
                 subtitle: const Text('Delete all entries and reset app'),
@@ -902,78 +869,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       ],
-    );
-  }
-
-  Future<void> _showApiKeyDialog() async {
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Icon(Icons.api, color: Colors.blue),
-            const SizedBox(width: 12),
-            const Text('Gemini API Key'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Enter your Google Gemini API Key to enable AI insights.',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _geminiApiKeyController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'API Key',
-                border: OutlineInputBorder(),
-                hintText: 'Enter key here...',
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: _launchApiStudioUrl,
-              icon: const Icon(Icons.open_in_new, size: 16),
-              label: const Text('Get a free key from Google AI Studio'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final key = _geminiApiKeyController.text.trim();
-              if (key.isNotEmpty) {
-                await StorageHelper.saveGeminiApiKey(key);
-                setState(() => _isAiEnabled = true);
-                if (!mounted) return;
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('✅ API Key saved! AI Coach is now active.'),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              } else {
-                await StorageHelper.deleteGeminiApiKey();
-                setState(() => _isAiEnabled = false);
-                if (!mounted) return;
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
     );
   }
 }

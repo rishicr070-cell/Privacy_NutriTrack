@@ -13,6 +13,7 @@ import '../widgets/animated_counter.dart';
 import '../widgets/empty_state_widget.dart';
 import 'add_food_screen.dart';
 import 'ai_insights_screen.dart';
+import 'food_scanner_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -128,6 +129,8 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                               children: [
                                 _buildWelcomeCard(),
+                                const SizedBox(height: 20),
+                                _buildQuickActions(),
                                 const SizedBox(height: 20),
                                 _buildQuickStats(),
                                 const SizedBox(height: 24),
@@ -410,6 +413,160 @@ class _HomeScreenState extends State<HomeScreen>
     if (percentage < 70) return "You're making great progress! 💪";
     if (percentage < 100) return "Almost there, keep it up! ⭐";
     return "Goal crushed! Amazing work! 🎉";
+  }
+
+  Widget _buildQuickActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quick Actions',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            // Scan Food - HIGHLIGHTED
+            Expanded(
+              flex: 2,
+              child: _buildQuickActionCard(
+                icon: Icons.camera_alt_rounded,
+                label: 'Scan Food',
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FoodScannerScreen(),
+                    ),
+                  );
+                },
+                isHighlighted: true,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Add Food
+            Expanded(
+              child: _buildQuickActionCard(
+                icon: Icons.add_circle_outline,
+                label: 'Add Food',
+                gradient: LinearGradient(
+                  colors: [Colors.green.shade400, Colors.green.shade600],
+                ),
+                onTap: () => _navigateToAddFood('breakfast'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            // AI Insights
+            Expanded(
+              child: _buildQuickActionCard(
+                icon: Icons.psychology_rounded,
+                label: 'AI Insights',
+                gradient: LinearGradient(
+                  colors: [Colors.purple.shade400, Colors.purple.shade600],
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AiInsightsScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Search Foods
+            Expanded(
+              child: _buildQuickActionCard(
+                icon: Icons.search_rounded,
+                label: 'Search',
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade400, Colors.blue.shade600],
+                ),
+                onTap: () {
+                  // Navigate to search tab (index 1)
+                  DefaultTabController.of(context).animateTo(1);
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Profile
+            Expanded(
+              child: _buildQuickActionCard(
+                icon: Icons.person_rounded,
+                label: 'Profile',
+                gradient: LinearGradient(
+                  colors: [Colors.orange.shade400, Colors.orange.shade600],
+                ),
+                onTap: () {
+                  // Navigate to profile tab (index 3)
+                  DefaultTabController.of(context).animateTo(3);
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActionCard({
+    required IconData icon,
+    required String label,
+    required Gradient gradient,
+    required VoidCallback onTap,
+    bool isHighlighted = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: EdgeInsets.all(isHighlighted ? 20 : 16),
+          decoration: BoxDecoration(
+            gradient: gradient,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: gradient.colors.first.withOpacity(0.3),
+                blurRadius: isHighlighted ? 12 : 8,
+                offset: Offset(0, isHighlighted ? 6 : 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: isHighlighted ? 36 : 28),
+              SizedBox(height: isHighlighted ? 12 : 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isHighlighted ? 16 : 13,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildQuickStats() {

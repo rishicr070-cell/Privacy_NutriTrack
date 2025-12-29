@@ -29,10 +29,7 @@ class MealSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: color.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
             color: color.withOpacity(0.08),
@@ -59,10 +56,7 @@ class MealSection extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            color.withOpacity(0.15),
-            color.withOpacity(0.05),
-          ],
+          colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
         ),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20),
@@ -97,7 +91,9 @@ class MealSection extends StatelessWidget {
                     '${_totalCalories.toInt()} kcal • ${entries.length} items',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.6),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -116,11 +112,7 @@ class MealSection extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 child: Padding(
                   padding: const EdgeInsets.all(8),
-                  child: Icon(
-                    Icons.add_rounded,
-                    color: color,
-                    size: 22,
-                  ),
+                  child: Icon(Icons.add_rounded, color: color, size: 22),
                 ),
               ),
             ),
@@ -153,23 +145,19 @@ class MealSection extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
           leading: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  color.withOpacity(0.2),
-                  color.withOpacity(0.1),
-                ],
+                colors: [color.withOpacity(0.2), color.withOpacity(0.1)],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              Icons.restaurant,
-              color: color,
-              size: 22,
-            ),
+            child: Icon(Icons.restaurant, color: color, size: 22),
           ),
           title: Text(
             entry.name,
@@ -181,14 +169,15 @@ class MealSection extends StatelessWidget {
           ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Row(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
               children: [
                 _buildNutrientChip(
                   '${entry.calories.toInt()} kcal',
                   Icons.local_fire_department,
                   Colors.orange,
                 ),
-                const SizedBox(width: 8),
                 _buildNutrientChip(
                   'P: ${entry.protein.toInt()}g',
                   Icons.fitness_center,
@@ -253,11 +242,7 @@ class MealSection extends StatelessWidget {
               color: color.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 40,
-              color: color.withOpacity(0.5),
-            ),
+            child: Icon(icon, size: 40, color: color.withOpacity(0.5)),
           ),
           const SizedBox(height: 16),
           Text(

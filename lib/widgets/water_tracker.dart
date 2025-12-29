@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import '../services/notification_service.dart';
+import '../utils/storage_helper.dart';
 
 class WaterTracker extends StatefulWidget {
   final int currentIntake;
@@ -17,8 +19,11 @@ class WaterTracker extends StatefulWidget {
   State<WaterTracker> createState() => _WaterTrackerState();
 }
 
-class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderStateMixin {
+class _WaterTrackerState extends State<WaterTracker>
+    with SingleTickerProviderStateMixin {
   late AnimationController _waveController;
+  bool _remindersEnabled = false;
+  bool _isLoadingReminders = false;
 
   @override
   void initState() {
@@ -27,6 +32,83 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat();
+    _loadReminderSettings();
+  }
+
+  Future<void> _loadReminderSettings() async {
+    final enabled = await StorageHelper.getWaterReminderEnabled();
+    if (mounted) {
+      setState(() {
+        _remindersEnabled = enabled;
+      });
+    }
+  }
+
+  Future<void> _toggleReminders() async {
+    setState(() => _isLoadingReminders = true);
+
+    try {
+      if (!_remindersEnabled) {
+        // Request permissions first
+        final granted = await NotificationService.requestPermissions();
+
+        if (!granted) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Notification permission denied. Please enable it in settings.',
+                ),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+          setState(() => _isLoadingReminders = false);
+          return;
+        }
+
+        // Schedule reminders
+        await NotificationService.scheduleWaterReminders();
+        await StorageHelper.setWaterReminderEnabled(true);
+
+        if (mounted) {
+          setState(() => _remindersEnabled = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                '💧 Water reminders enabled! You\'ll be notified every 4 hours.',
+              ),
+              backgroundColor: Color(0xFF00D4FF),
+            ),
+          );
+        }
+      } else {
+        // Cancel reminders
+        await NotificationService.cancelWaterReminders();
+        await StorageHelper.setWaterReminderEnabled(false);
+
+        if (mounted) {
+          setState(() => _remindersEnabled = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Water reminders disabled'),
+              backgroundColor: Colors.grey,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error toggling reminders: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingReminders = false);
+      }
+    }
   }
 
   @override
@@ -93,32 +175,87 @@ class _WaterTrackerState extends State<WaterTracker> with SingleTickerProviderSt
                 ),
               ),
               const SizedBox(width: 16),
+              Text(
+                'Water Intake',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const Spacer(),
+              // Notification bell button in top right
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _isLoadingReminders ? null : _toggleReminders,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _remindersEnabled
+                          ? const Color(0xFF00D4FF).withOpacity(0.2)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _remindersEnabled
+                            ? const Color(0xFF00D4FF)
+                            : Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: _isLoadingReminders
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          )
+                        : Icon(
+                            _remindersEnabled
+                                ? Icons.notifications_active
+                                : Icons.notifications_outlined,
+                            color: _remindersEnabled
+                                ? const Color(0xFF00D4FF)
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withOpacity(0.6),
+                            size: 20,
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const SizedBox(
+                width: 56,
+              ), // Align with text above (icon width + spacing)
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Water Intake',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${widget.currentIntake}ml / ${widget.goal.toInt()}ml',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  '${widget.currentIntake}ml / ${widget.goal.toInt()}ml',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.6),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -410,10 +547,13 @@ class WavePainter extends CustomPainter {
     path.moveTo(0, size.height);
 
     for (double x = 0; x <= size.width; x++) {
-      final y = size.height -
+      final y =
+          size.height -
           5 +
           waveHeight *
-              math.sin((x / waveLength * 2 * math.pi) + (animation * 2 * math.pi));
+              math.sin(
+                (x / waveLength * 2 * math.pi) + (animation * 2 * math.pi),
+              );
       path.lineTo(x, y);
     }
 

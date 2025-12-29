@@ -1,8 +1,10 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/food_detector_service.dart';
+import '../services/food_search_service.dart';
+import '../utils/food_data_loader.dart';
+import '../models/food_item.dart';
 
 class FoodScannerScreen extends StatefulWidget {
   const FoodScannerScreen({super.key});
@@ -14,15 +16,48 @@ class FoodScannerScreen extends StatefulWidget {
 class _FoodScannerScreenState extends State<FoodScannerScreen> {
   final ImagePicker _picker = ImagePicker();
   final FoodDetectorService _detector = FoodDetectorService();
-  
+
   bool _isLoading = false;
+  bool _isLoadingDatabase = true;
   Map<String, dynamic>? _result;
   Uint8List? _imageBytes;
+  List<FoodItem> _foodDatabase = [];
+  List<FoodSearchResult> _nutritionMatches = [];
 
   @override
   void initState() {
     super.initState();
     _loadModel();
+    _loadFoodDatabase();
+  }
+
+  Future<void> _loadFoodDatabase() async {
+    try {
+      final foods = await FoodDataLoader.loadFoodItems();
+      setState(() {
+        _foodDatabase = foods;
+        _isLoadingDatabase = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Loaded ${foods.length} foods'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoadingDatabase = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ Error loading food database: $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadModel() async {
@@ -40,10 +75,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -65,19 +97,29 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       final bytes = await image.readAsBytes();
       final result = await _detector.detectFood(bytes);
 
+      // Auto-search for nutrition data
+      List<FoodSearchResult> matches = [];
+      if (result['label'] != null && _foodDatabase.isNotEmpty) {
+        final detectedName = result['label'] as String;
+        matches = FoodSearchService.searchFoods(
+          detectedName,
+          _foodDatabase,
+          maxResults: 3,
+          minSimilarity: 0.4,
+        );
+      }
+
       setState(() {
         _result = result;
         _imageBytes = bytes;
+        _nutritionMatches = matches;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -97,14 +139,18 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
         backgroundColor: const Color(0xFF4ECDC4),
         foregroundColor: Colors.white,
       ),
-      body: _isLoading
-          ? const Center(
+      body: _isLoading || _isLoadingDatabase
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Detecting food...'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    _isLoadingDatabase
+                        ? 'Loading food database...'
+                        : 'Detecting food...',
+                  ),
                 ],
               ),
             )
@@ -119,6 +165,10 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                   ],
                   if (_result != null) ...[
                     _buildResults(),
+                    const SizedBox(height: 16),
+                  ],
+                  if (_nutritionMatches.isNotEmpty) ...[
+                    _buildNutritionMatches(),
                     const SizedBox(height: 24),
                   ],
                   _buildActionButtons(),
@@ -133,16 +183,10 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   Widget _buildImagePreview() {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: Image.memory(
-          _imageBytes!,
-          fit: BoxFit.cover,
-          height: 300,
-        ),
+        child: Image.memory(_imageBytes!, fit: BoxFit.cover, height: 300),
       ),
     );
   }
@@ -154,9 +198,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -176,10 +218,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                     children: [
                       const Text(
                         'Detected Food',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                       Text(
                         label.replaceAll('_', ' '),
@@ -199,10 +238,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
               const SizedBox(height: 24),
               const Text(
                 'Top Predictions:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               ...allPredictions.take(5).map((pred) {
@@ -212,9 +248,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     children: [
-                      Expanded(
-                        child: Text(predLabel.replaceAll('_', ' ')),
-                      ),
+                      Expanded(child: Text(predLabel.replaceAll('_', ' '))),
                       Text(
                         '${(predConf * 100).toStringAsFixed(1)}%',
                         style: TextStyle(
@@ -270,10 +304,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
             Text(
               '${(confidence * 100).toStringAsFixed(1)}%',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -288,9 +319,200 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
               confidence > 0.7
                   ? Colors.green
                   : confidence > 0.4
-                      ? Colors.orange
-                      : Colors.red,
+                  ? Colors.orange
+                  : Colors.red,
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNutritionMatches() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.restaurant,
+                  color: Color(0xFF4ECDC4),
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Nutrition Data',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ..._nutritionMatches.map((match) => _buildNutritionMatch(match)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNutritionMatch(FoodSearchResult match) {
+    final food = match.food;
+    final matchIcon = match.matchType == MatchType.exact
+        ? Icons.check_circle
+        : match.matchType == MatchType.high
+        ? Icons.check_circle_outline
+        : Icons.info_outline;
+    final matchColor =
+        match.matchType == MatchType.exact || match.matchType == MatchType.high
+        ? Colors.green
+        : Colors.orange;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(matchIcon, color: matchColor, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      food.foodName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (food.category != null)
+                      Text(
+                        food.category!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: matchColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${match.confidencePercent}% match',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: matchColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Nutrition info
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNutrientInfo(
+                'Calories',
+                '${food.calories.toStringAsFixed(0)}',
+                'kcal',
+                const Color(0xFFFFBE0B),
+              ),
+              _buildNutrientInfo(
+                'Protein',
+                '${food.protein.toStringAsFixed(1)}',
+                'g',
+                const Color(0xFF4ECDC4),
+              ),
+              _buildNutrientInfo(
+                'Carbs',
+                '${food.carbs.toStringAsFixed(1)}',
+                'g',
+                const Color(0xFFFFBE0B),
+              ),
+              _buildNutrientInfo(
+                'Fat',
+                '${food.fat.toStringAsFixed(1)}',
+                'g',
+                const Color(0xFFFF006E),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context, {
+                  'foodItem': food,
+                  'detectionConfidence': _result?['confidence'] ?? 0.0,
+                  'matchConfidence': match.similarity,
+                });
+              },
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add to Meal'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4ECDC4),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNutrientInfo(
+    String label,
+    String value,
+    String unit,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+        ),
+        const SizedBox(height: 4),
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: value,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              TextSpan(
+                text: ' $unit',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ],
           ),
         ),
       ],
@@ -340,9 +562,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   Widget _buildInstructions() {
     return Card(
       color: Colors.blue.shade50,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

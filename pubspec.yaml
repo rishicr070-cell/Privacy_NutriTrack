@@ -35,11 +35,17 @@ dependencies:
   flutter_dotenv: ^5.1.0
   http: ^1.1.0
   flutter_markdown: ^0.7.4+1
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.4
+  path_provider: ^2.1.2
+  share_plus: ^7.2.2
+  file_picker: ^8.1.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -48,4 +54,19 @@ flutter:
     - assets/models/
     - assets/models/Fooddetector.tflite
     - assets/Anuvaad_INDB_2024.11.csv
+    - assets/final food dataset/FOOD-DATA-GROUP1.csv
+    - assets/final food dataset/FOOD-DATA-GROUP2.csv
+    - assets/final food dataset/FOOD-DATA-GROUP3.csv
+    - assets/final food dataset/FOOD-DATA-GROUP4.csv
+    - assets/final food dataset/FOOD-DATA-GROUP5.csv
+    - assets/Indian_Food_DF.csv
+    - assets/cleaned_nutrition_dataset_per100g.csv
+    - assets/indian_food_nutrition_dataset.csv
     - .env
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon.png"
+  adaptive_icon_background: "#00C9FF"
+  adaptive_icon_foreground: "assets/app_icon.png"

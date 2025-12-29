@@ -373,6 +373,68 @@ class StorageHelper {
 
   // ==================== USER PREFERENCES ====================
 
+  static Future<bool> getWaterReminderEnabled() async {
+    try {
+      if (_useSharedPrefsOnly) {
+        if (kIsWeb) {
+          return WebStorage.getBool('water_reminder_enabled') ?? false;
+        }
+        return _prefs?.getBool('water_reminder_enabled') ?? false;
+      }
+      return await _secure.getWaterReminderEnabled();
+    } catch (e) {
+      print('Error reading water reminder preference: $e');
+      return false;
+    }
+  }
+
+  static Future<void> setWaterReminderEnabled(bool enabled) async {
+    try {
+      if (_useSharedPrefsOnly) {
+        if (kIsWeb) {
+          WebStorage.setBool('water_reminder_enabled', enabled);
+        } else {
+          await _prefs?.setBool('water_reminder_enabled', enabled);
+        }
+      } else {
+        await _secure.setWaterReminderEnabled(enabled);
+      }
+    } catch (e) {
+      print('Error saving water reminder preference: $e');
+    }
+  }
+
+  static Future<int> getWaterReminderInterval() async {
+    try {
+      if (_useSharedPrefsOnly) {
+        if (kIsWeb) {
+          return WebStorage.getInt('water_reminder_interval') ?? 240;
+        }
+        return _prefs?.getInt('water_reminder_interval') ?? 240;
+      }
+      return await _secure.getWaterReminderInterval();
+    } catch (e) {
+      print('Error reading water reminder interval: $e');
+      return 240; // Default: 4 hours
+    }
+  }
+
+  static Future<void> setWaterReminderInterval(int minutes) async {
+    try {
+      if (_useSharedPrefsOnly) {
+        if (kIsWeb) {
+          WebStorage.setInt('water_reminder_interval', minutes);
+        } else {
+          await _prefs?.setInt('water_reminder_interval', minutes);
+        }
+      } else {
+        await _secure.setWaterReminderInterval(minutes);
+      }
+    } catch (e) {
+      print('Error saving water reminder interval: $e');
+    }
+  }
+
   static Future<bool> areNotificationsEnabled() async {
     try {
       if (_useSharedPrefsOnly) {
@@ -401,6 +463,74 @@ class StorageHelper {
       }
     } catch (e) {
       print('Error saving notifications preference: $e');
+    }
+  }
+
+  // ==================== FAVORITES & RECENT FOODS ====================
+
+  static Future<Set<String>> getFavoriteFoods() async {
+    try {
+      if (_useSharedPrefsOnly) {
+        String? jsonString;
+        if (kIsWeb) {
+          jsonString = WebStorage.getString('favorite_foods');
+        } else {
+          jsonString = _prefs?.getString('favorite_foods');
+        }
+        if (jsonString == null) return {};
+        final List<dynamic> list = jsonDecode(jsonString);
+        return Set<String>.from(list);
+      }
+      return await _secure.getFavoriteFoods();
+    } catch (e) {
+      print('Error loading favorite foods: $e');
+      return {};
+    }
+  }
+
+  static Future<void> toggleFavoriteFood(String foodName) async {
+    try {
+      final favorites = await getFavoriteFoods();
+      if (favorites.contains(foodName)) {
+        favorites.remove(foodName);
+      } else {
+        favorites.add(foodName);
+      }
+
+      final jsonString = jsonEncode(favorites.toList());
+      if (_useSharedPrefsOnly) {
+        if (kIsWeb) {
+          WebStorage.setString('favorite_foods', jsonString);
+        } else {
+          await _prefs?.setString('favorite_foods', jsonString);
+        }
+      } else {
+        await _secure.setFavoriteFoods(favorites);
+      }
+    } catch (e) {
+      print('Error toggling favorite food: $e');
+    }
+  }
+
+  static Future<List<String>> getRecentFoods({int limit = 10}) async {
+    try {
+      final entries = await getFoodEntries();
+      // Get unique food names from recent entries
+      final recentFoods = <String>[];
+      final seen = <String>{};
+
+      for (final entry in entries.reversed) {
+        if (!seen.contains(entry.name) && recentFoods.length < limit) {
+          recentFoods.add(entry.name);
+          seen.add(entry.name);
+        }
+        if (recentFoods.length >= limit) break;
+      }
+
+      return recentFoods;
+    } catch (e) {
+      print('Error loading recent foods: $e');
+      return [];
     }
   }
 

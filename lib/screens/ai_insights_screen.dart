@@ -280,29 +280,55 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
             ),
           ),
 
-          // Content - LARGE SCROLLABLE AREA
+          // Content - SCROLLABLE AREA
           Container(
-            constraints: BoxConstraints(
-              minHeight: 400, // MINIMUM HEIGHT
-              maxHeight:
-                  MediaQuery.of(context).size.height * 0.6, // 60% of screen
-            ),
-            padding: const EdgeInsets.all(24),
-            child: Markdown(
-              data: _insights ?? 'No insights available',
-              shrinkWrap: true,
+            height:
+                MediaQuery.of(context).size.height *
+                0.5, // Fixed height: 50% of screen
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              styleSheet: MarkdownStyleSheet(
-                p: const TextStyle(
-                  fontSize: 17,
-                  height: 1.8,
-                  letterSpacing: 0.3,
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w400,
-                ),
-                strong: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: MarkdownBody(
+                  data: _insights ?? 'No insights available',
+                  styleSheet: MarkdownStyleSheet(
+                    p: const TextStyle(
+                      fontSize: 16,
+                      height: 1.6,
+                      letterSpacing: 0.2,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    h1: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      height: 1.4,
+                    ),
+                    h2: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      height: 1.4,
+                    ),
+                    h3: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                      height: 1.3,
+                    ),
+                    strong: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    listBullet: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.purple,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    blockSpacing: 12,
+                  ),
                 ),
               ),
             ),
