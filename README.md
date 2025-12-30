@@ -15,6 +15,33 @@
 
 ---
 
+## 🌟 Feature Highlights
+
+<div align="center">
+
+| 🍽️ **Nutrition Tracking** | 🤖 **AI-Powered** | 🔐 **Privacy First** | 📊 **Analytics** |
+|:---:|:---:|:---:|:---:|
+| 10,000+ Indian foods | Gemini AI insights | 100% local storage | Beautiful charts |
+| Auto-calculation | Food detection | No cloud sync | Trend analysis |
+| Barcode scanner | Smart suggestions | Encrypted data | Custom time ranges |
+
+</div>
+
+### ⚡ Quick Feature Overview
+
+- ✅ **10,000+ Indian Food Database** - Comprehensive nutrition data from multiple sources
+- ✅ **AI-Powered Insights** - Gemini AI provides personalized nutrition coaching
+- ✅ **Food Detection** - TensorFlow Lite on-device ML for photo recognition
+- ✅ **Smart Water Reminders** - Customizable hydration notifications (8 AM - 8 PM)
+- ✅ **Beautiful Analytics** - Interactive charts with 7/14/30/90-day views
+- ✅ **Data Export** - CSV export with share functionality
+- ✅ **Step Tracking** - Integrated pedometer for activity monitoring
+- ✅ **Dark Mode** - Seamless theme switching with persistence
+- ✅ **Health Tracking** - BMI, weight progress, health conditions, allergies
+- ✅ **Zero Tracking** - No accounts, no cloud, no analytics, no data collection
+
+---
+
 ## ✨ Features
 
 ### 🏠 Home Screen - Your Daily Dashboard
@@ -29,15 +56,17 @@
 - **Quick Stats Cards** showing meals logged, protein intake, and water consumption
 - **Swipe-to-Delete** for easy entry management
 - **Pull-to-Refresh** for instant data updates
+- **Quick Action Shortcuts** for fast access to food scanner and key features
 
 ### 🔍 Search Screen - Find Foods Fast
-- **10,000+ Indian Foods Database** (Anuvaad INDB 2024)
+- **10,000+ Indian Foods Database** (Anuvaad INDB 2024 + multiple comprehensive datasets)
 - **Real-time Smart Search** with instant filtering
 - **Auto-Calculation** - Enter serving size, nutrients calculate automatically
 - **Category Browsing** (Fruits, Proteins, Grains, Vegetables, Dairy, Nuts & Seeds)
 - **Quick Add Chips** for common foods
 - **Barcode Scanner** (mobile only, with food detection AI)
 - **Empty State Prompts** guiding users to search or scan
+- **Intelligent Food Search Service** with fuzzy matching and category filtering
 
 ### 📊 Analytics Screen - Track Your Progress
 - **Skeleton Chart Loaders** for better perceived performance
@@ -48,6 +77,16 @@
 - **Statistics Cards** with averages and totals
 - **Interactive Charts** with beautiful gradients
 - **Smart Empty States** when no data is available
+- **Weekly/Monthly Insights** with trend analysis
+
+### 🤖 AI Insights Screen - Personalized Nutrition Coach
+- **Gemini AI-Powered Analysis** of your eating patterns
+- **Personalized Recommendations** based on your nutrition data
+- **Health Insights** tailored to your goals and profile
+- **Data Summary Cards** showing key metrics
+- **Markdown-Formatted Insights** for easy reading
+- **Real-time Analysis** of your nutrition trends
+- **Smart Suggestions** for improving your diet
 
 ### 👤 Profile Screen - Manage Your Health
 - **Complete Profile Management** with avatar
@@ -59,6 +98,15 @@
 - **Health Conditions Tracking** for personalized alerts
 - **Allergy Management** for safe eating
 - **Dark Mode Toggle** with instant switching
+- **Data Export Options** for backing up your information
+
+### 📤 Data Export & Backup
+- **CSV Export** for all food entries with complete nutrition data
+- **Profile Export** with all your personal information and goals
+- **Share Functionality** to save exports to cloud or email
+- **Export Summary** showing total entries and date ranges
+- **Privacy-Focused** - You control your data exports
+- **Timestamped Files** for easy organization
 
 ### 🎨 UI/UX Excellence
 - **🌙 Dark Mode Support** - Seamlessly switch between light and dark themes
@@ -96,6 +144,29 @@
 - **TensorFlow Lite** - On-device ML model for food classification
 - **Smart Suggestions** - Based on your eating patterns
 - **Nutrition Insights** - AI-powered health recommendations
+- **Gemini AI Integration** - Advanced conversational AI for personalized coaching
+- **Pattern Recognition** - Identifies eating habits and trends
+
+### 🔔 Smart Notifications & Reminders
+- **Water Intake Reminders** - Customizable hydration notifications
+- **Scheduled Notifications** - Set reminders throughout the day (8 AM - 8 PM)
+- **Configurable Intervals** - Choose reminder frequency (default: every 4 hours)
+- **Platform-Native** - Uses iOS Keychain and Android notification channels
+- **Permission Management** - Easy notification settings control
+- **Daily Repeating** - Automatic daily scheduling for consistency
+
+### 🚶 Activity & Wellness Tracking
+- **Step Counter Integration** - Track daily steps with pedometer
+- **Activity-Based Calorie Adjustment** - Goals adapt to your activity level
+- **Permission Handling** - Seamless activity tracking permissions
+- **Health Data Privacy** - All activity data stored locally
+
+### 🗣️ Accessibility Features
+- **Text-to-Speech** - Audio feedback for key information
+- **Voice Guidance** - Spoken nutrition information
+- **Accessibility Support** - Screen reader compatible
+- **High Contrast Mode** - Dark mode for better visibility
+
 
 ---
 
@@ -152,6 +223,7 @@ flutter build ios --release
 - **sqflite ^2.3.0** - SQLite database
 - **flutter_secure_storage ^9.0.0** - Encrypted storage
 - **shared_preferences ^2.2.2** - Key-value storage
+- **path_provider ^2.1.2** - File system paths
 
 ### UI & Animations
 - **fl_chart ^0.66.0** - Interactive charts
@@ -160,19 +232,37 @@ flutter build ios --release
 - **animations ^2.0.11** - Smooth transitions
 - **flutter_slidable ^3.0.1** - Swipe actions
 - **google_fonts ^6.1.0** - Custom fonts
+- **flutter_markdown ^0.7.4+1** - Markdown rendering
 
 ### AI & ML
 - **tflite_flutter ^0.11.0** - TensorFlow Lite for food detection
+- **google_generative_ai ^0.4.6** - Gemini AI integration
 - **camera ^0.10.5+5** - Camera access
 - **image ^4.0.17** - Image processing
 - **image_picker ^1.0.4** - Photo selection
 
+### Notifications & Reminders
+- **flutter_local_notifications ^17.2.3** - Local push notifications
+- **timezone ^0.9.4** - Timezone handling for scheduled notifications
+
+### Data Management & Export
+- **csv ^6.0.0** - CSV parsing and export
+- **share_plus ^7.2.2** - Share functionality
+- **file_picker ^8.1.4** - File selection
+- **http ^1.1.0** - HTTP requests
+
+### Health & Activity
+- **pedometer ^4.0.2** - Step counting
+- **permission_handler ^11.3.0** - Runtime permissions
+
 ### Utilities
 - **intl ^0.19.0** - Date/time formatting
-- **csv ^6.0.0** - CSV parsing for food database
 - **mobile_scanner ^3.5.5** - Barcode scanning
 - **provider ^6.1.1** - State management
 - **flutter_tts ^4.0.2** - Text-to-speech
+- **url_launcher ^6.2.1** - Open URLs
+- **flutter_dotenv ^5.1.0** - Environment variables
+
 
 ---
 
@@ -193,7 +283,8 @@ lib/
 │   ├── add_food_screen.dart          # Add/edit food entries
 │   ├── edit_profile_screen.dart      # Edit user information
 │   ├── health_conditions_screen.dart # Health tracking setup
-│   └── food_scanner_screen.dart      # AI food detection
+│   ├── food_scanner_screen.dart      # AI food detection
+│   └── ai_insights_screen.dart       # Gemini AI nutrition coach
 ├── widgets/
 │   ├── nutrition_ring_chart.dart     # Custom ring chart
 │   ├── meal_section.dart             # Meal display component
@@ -202,6 +293,14 @@ lib/
 │   ├── animated_progress_ring.dart   # Circular progress with milestones
 │   ├── animated_counter.dart         # Counting number animations
 │   └── empty_state_widget.dart       # Illustrated empty states
+├── services/
+│   ├── export_service.dart           # CSV export functionality
+│   ├── notification_service.dart     # Water reminders & notifications
+│   ├── gemini_service.dart           # Gemini AI integration
+│   ├── food_detector_service.dart    # TensorFlow Lite food detection
+│   ├── food_search_service.dart      # Smart food search
+│   ├── steps_service.dart            # Step counter integration
+│   └── tts_service.dart              # Text-to-speech
 ├── utils/
 │   ├── storage_helper.dart           # Unified storage interface
 │   ├── database_helper.dart          # SQLite database manager
@@ -213,9 +312,20 @@ lib/
 
 assets/
 ├── Anuvaad_INDB_2024.11.csv         # Indian food database (10,000+ foods)
-└── models/
-    └── Fooddetector.tflite           # AI food detection model
+├── final food dataset/               # Additional comprehensive datasets
+│   ├── FOOD-DATA-GROUP1.csv
+│   ├── FOOD-DATA-GROUP2.csv
+│   ├── FOOD-DATA-GROUP3.csv
+│   ├── FOOD-DATA-GROUP4.csv
+│   └── FOOD-DATA-GROUP5.csv
+├── Indian_Food_DF.csv               # Indian food nutrition data
+├── cleaned_nutrition_dataset_per100g.csv
+├── indian_food_nutrition_dataset.csv
+├── models/
+│   └── Fooddetector.tflite          # AI food detection model
+└── .env                              # Environment variables (Gemini API key)
 ```
+
 
 ---
 
@@ -242,11 +352,34 @@ assets/
 2. Find **Water Tracker card**
 3. Tap **+** to add 250ml
 4. Watch the animated glass fill up!
+5. Enable notifications for hydration reminders
+
+### Setting Up Water Reminders
+1. Go to **Profile tab**
+2. Tap **Settings** or **Notifications**
+3. Enable **Water Reminders**
+4. Choose your reminder interval (default: 4 hours)
+5. Get notified throughout the day (8 AM - 8 PM)
 
 ### Viewing Analytics
 1. Go to **Analytics tab**
 2. Select time range (7/14/30/90 days)
 3. View calorie trends, macro distribution, and meal patterns
+
+### Getting AI Insights
+1. Navigate to **AI Insights** screen
+2. View personalized nutrition recommendations
+3. Get insights based on your eating patterns
+4. See data summaries and health tips
+5. Follow AI-powered suggestions to improve your diet
+
+### Exporting Your Data
+1. Go to **Profile tab**
+2. Tap **Export Data** or **Settings**
+3. Choose **Export All Data** or **Export Profile**
+4. Select where to save (email, cloud storage, etc.)
+5. Your data is exported as CSV with timestamps
+
 
 ---
 
@@ -374,15 +507,28 @@ flutter run --verbose
 
 ## 🔮 Future Enhancements
 
-- [ ] **Meal Templates** - Save favorite meals
-- [ ] **Recipe Builder** - Create and track recipes
-- [ ] **Export to CSV/PDF** - Generate nutrition reports
-- [ ] **Meal Reminders** - Notifications for logging
-- [ ] **Streaks & Achievements** - Gamify tracking
-- [ ] **Multi-language Support** - Internationalization
-- [ ] **Apple Health / Google Fit** - Sync with health apps
-- [ ] **Widget Support** - Home screen widgets
-- [ ] **Wear OS / WatchOS** - Smartwatch companion
+### Completed ✅
+- ✅ **Export to CSV** - Generate nutrition reports (IMPLEMENTED)
+- ✅ **Meal Reminders** - Notifications for logging (IMPLEMENTED - Water reminders)
+- ✅ **AI Insights** - Gemini-powered nutrition coaching (IMPLEMENTED)
+
+### Planned Features
+- [ ] **Meal Templates** - Save favorite meals for quick logging
+- [ ] **Recipe Builder** - Create and track custom recipes
+- [ ] **PDF Reports** - Generate detailed nutrition reports
+- [ ] **Streaks & Achievements** - Gamify tracking with badges
+- [ ] **Multi-language Support** - Internationalization (i18n)
+- [ ] **Apple Health / Google Fit** - Sync with health platforms
+- [ ] **Widget Support** - Home screen widgets for quick logging
+- [ ] **Wear OS / WatchOS** - Smartwatch companion app
+- [ ] **Meal Planning** - Weekly meal planner with shopping lists
+- [ ] **Restaurant Database** - Popular restaurant menu items
+- [ ] **Barcode Database** - Expand barcode food recognition
+- [ ] **Voice Input** - Add foods using voice commands
+- [ ] **Photo Gallery** - Visual meal diary with photos
+- [ ] **Social Features** - Share progress with friends (optional)
+- [ ] **Offline Mode** - Full functionality without internet
+
 
 ---
 
@@ -399,16 +545,45 @@ All documentation has been consolidated into this README. For specific topics:
 
 ## 🙏 Acknowledgments
 
+### Frameworks & Core
 - **Flutter Team** - Amazing cross-platform framework
+- **Material Design 3** - Modern design guidelines
+- **Dart Team** - Powerful programming language
+
+### UI & Visualization
 - **fl_chart** - Beautiful chart library
-- **sqflite** - Reliable SQLite plugin
-- **flutter_secure_storage** - Platform-native encryption
 - **shimmer** - Smooth loading animations
 - **flutter_staggered_animations** - Delightful list animations
-- **Material Design 3** - Modern design guidelines
-- **Indian INDB Database** - Comprehensive Indian food data
-- **TensorFlow** - AI/ML capabilities
-- **Open Source Community** - All the amazing packages
+- **google_fonts** - Beautiful typography
+- **flutter_markdown** - Markdown rendering support
+- **animations** - Smooth page transitions
+
+### Data & Storage
+- **sqflite** - Reliable SQLite plugin
+- **flutter_secure_storage** - Platform-native encryption
+- **shared_preferences** - Simple key-value storage
+- **path_provider** - File system access
+
+### AI & Machine Learning
+- **Google Generative AI** - Gemini AI integration for personalized insights
+- **TensorFlow** - AI/ML capabilities for food detection
+- **tflite_flutter** - On-device machine learning
+
+### Notifications & Services
+- **flutter_local_notifications** - Local push notifications
+- **timezone** - Timezone handling for scheduled reminders
+- **share_plus** - Cross-platform sharing
+- **pedometer** - Step counting functionality
+
+### Data Sources
+- **Indian INDB Database (Anuvaad 2024)** - Comprehensive Indian food data
+- **Multiple Nutrition Datasets** - Extensive food nutrition information
+- **Open Source Community** - All the amazing packages and contributors
+
+### Special Thanks
+- **Open Source Community** - For maintaining incredible packages
+- **Flutter Community** - For support and inspiration
+- **Contributors** - Everyone who makes Flutter development amazing
 
 ---
 

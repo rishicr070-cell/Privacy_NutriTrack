@@ -14,6 +14,7 @@ import '../widgets/empty_state_widget.dart';
 import 'add_food_screen.dart';
 import 'ai_insights_screen.dart';
 import 'food_scanner_screen.dart';
+import '../widgets/steps_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -152,6 +153,8 @@ class _HomeScreenState extends State<HomeScreen>
                                     );
                                   },
                                 ),
+                                const SizedBox(height: 24),
+                                const StepsWidget(stepGoal: 10000),
                                 const SizedBox(height: 24),
                                 _buildMealsSection(),
                               ],
