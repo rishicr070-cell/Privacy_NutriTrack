@@ -24,7 +24,7 @@ class _StepsWidgetState extends State<StepsWidget> {
     final granted = await StepsService.requestPermissions();
 
     if (granted) {
-      StepsService.initPedometer();
+      await StepsService.initPedometer();
       setState(() => _hasPermission = true);
 
       // Update UI every second
@@ -32,10 +32,11 @@ class _StepsWidgetState extends State<StepsWidget> {
     }
   }
 
-  void _updateSteps() {
+  Future<void> _updateSteps() async {
     if (!mounted) return;
+    final steps = await StepsService.getTodaySteps();
     setState(() {
-      _steps = StepsService.getTodaySteps();
+      _steps = steps;
     });
     Future.delayed(const Duration(seconds: 2), _updateSteps);
   }

@@ -29,31 +29,46 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
     setState(() => _isLoading = true);
 
     final profile = await StorageHelper.getUserProfile();
-    final entries = await StorageHelper.getFoodEntries();
-    final recentEntries = entries.reversed.take(20).toList();
+    final allEntries = await StorageHelper.getFoodEntries();
+
+    // Filter to only TODAY's entries
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayEntries = allEntries.where((entry) {
+      final entryDate = DateTime(
+        entry.timestamp.year,
+        entry.timestamp.month,
+        entry.timestamp.day,
+      );
+      return entryDate.isAtSameMomentAs(today);
+    }).toList();
 
     debugPrint('🔍 AI Insights Screen: Loading insights...');
+    debugPrint(
+      '📅 Total entries: ${allEntries.length}, Today\'s entries: ${todayEntries.length}',
+    );
 
     String? insights;
-    if (profile != null && recentEntries.isNotEmpty) {
+    if (profile != null && todayEntries.isNotEmpty) {
       insights = await _geminiService.getNutritionInsights(
         profile,
-        recentEntries,
+        todayEntries,
       );
       debugPrint('📝 Insights length: ${insights?.length ?? 0}');
     } else {
       if (profile == null) {
         insights =
             "Please set up your profile first to get personalized insights.";
-      } else if (recentEntries.isEmpty) {
-        insights = "Start logging your meals to get personalized AI insights!";
+      } else if (todayEntries.isEmpty) {
+        insights =
+            "Start logging your meals today to get personalized AI insights!";
       }
     }
 
     if (mounted) {
       setState(() {
         _userProfile = profile;
-        _recentEntries = recentEntries;
+        _recentEntries = todayEntries;
         _insights = insights;
         _isLoading = false;
       });

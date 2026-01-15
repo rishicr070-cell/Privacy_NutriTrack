@@ -216,21 +216,22 @@ Goal: ${profile.goalDescription}
 Targets: ${profile.dailyCalorieGoal} kcal | P: ${profile.dailyProteinGoal}g | C: ${profile.dailyCarbsGoal}g | F: ${profile.dailyFatGoal}g
 ${profile.healthConditions.isNotEmpty ? 'Health: ${profile.healthConditions.join(", ")}' : ''}
 
-TODAY'S INTAKE:
+TODAY'S INTAKE (ONLY TODAY - NOT YESTERDAY):
 ${recentEntries.take(10).map((e) => "• ${e.name}: ${e.calories.toInt()} kcal (P:${e.protein.toInt()}g, C:${e.carbs.toInt()}g, F:${e.fat.toInt()}g)").join('\n')}
 
-TOTALS:
+TODAY'S TOTALS (CURRENT DAY ONLY):
 Calories: ${totalCalories.toInt()}/${profile.dailyCalorieGoal.toInt()} (${((totalCalories / profile.dailyCalorieGoal) * 100).toInt()}%)
 Protein: ${totalProtein.toInt()}/${profile.dailyProteinGoal.toInt()}g | Carbs: ${totalCarbs.toInt()}/${profile.dailyCarbsGoal.toInt()}g | Fat: ${totalFat.toInt()}/${profile.dailyFatGoal.toInt()}g
 
 STRICT REQUIREMENTS:
 - Maximum 100 words total
+- Analyze ONLY today's data - do NOT mention yesterday or previous days
 - Include SPECIFIC DATA: mention actual calorie numbers, gram values, and percentages
 - Add relevant emojis (🎯📊💪🍎⚠️✅) to highlight key points
 - IMPORTANT: Put each section on a NEW LINE with a blank line between sections
 - Use this exact structure:
 
-**🎯 Progress:** [Goal status with % or numbers]
+**🎯 Progress:** [Goal status with % or numbers for TODAY]
 
 **✅ Strengths:** [1-2 foods with their macro values]
 
@@ -238,7 +239,7 @@ STRICT REQUIREMENTS:
 
 **🍽️ Next Meal:** [2 foods with estimated macro contribution]
 
-Be data-driven, encouraging, and actionable , if more of junk foods eaten tell the damage. Always cite numbers and reference actual foods eaten.
+Be data-driven, encouraging, and actionable. If junk foods eaten today, mention the impact. Always cite numbers and reference actual foods eaten TODAY.
 """;
 
       final result = await _generateContent(prompt);
