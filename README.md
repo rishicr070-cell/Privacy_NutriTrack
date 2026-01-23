@@ -23,7 +23,7 @@
 |:---:|:---:|:---:|:---:|
 | 10,000+ Indian foods | Gemini AI insights | 100% local storage | Beautiful charts |
 | Auto-calculation | Food detection | No cloud sync | Trend analysis |
-| Barcode scanner | Smart suggestions | Encrypted data | Custom time ranges |
+| Barcode scanner | Multilingual Alerts | Encrypted data | Custom time ranges |
 
 </div>
 
@@ -38,6 +38,8 @@
 - ✅ **Step Tracking** - Integrated pedometer for activity monitoring
 - ✅ **Dark Mode** - Seamless theme switching with persistence
 - ✅ **Health Tracking** - BMI, weight progress, health conditions, allergies
+- ✅ **Multilingual Alerts** - Health warnings spoken in 11 Indian languages
+- ✅ **Smart Portion Estimation** - Offline visual estimator for food sizing
 - ✅ **Zero Tracking** - No accounts, no cloud, no analytics, no data collection
 
 ---
@@ -87,6 +89,8 @@
 - **Markdown-Formatted Insights** for easy reading
 - **Real-time Analysis** of your nutrition trends
 - **Smart Suggestions** for improving your diet
+- **Multilingual Support** - Health alerts translated to regional languages
+- **Live Translation** - Gemini-powered real-time translation of safety warnings
 
 ### 👤 Profile Screen - Manage Your Health
 - **Complete Profile Management** with avatar
@@ -145,6 +149,8 @@
 - **Smart Suggestions** - Based on your eating patterns
 - **Nutrition Insights** - AI-powered health recommendations
 - **Gemini AI Integration** - Advanced conversational AI for personalized coaching
+- **Real-time Translation** - Translates health alerts to your preferred language
+- **Smart Portion Estimation** - Offline estimation of food weights
 - **Pattern Recognition** - Identifies eating habits and trends
 
 ### 🔔 Smart Notifications & Reminders
@@ -163,7 +169,8 @@
 
 ### 🗣️ Accessibility Features
 - **Text-to-Speech** - Audio feedback for key information
-- **Voice Guidance** - Spoken nutrition information
+- **Multilingual TTS** - Supports 11 Indian languages (Hindi, Tamil, Telugu, etc.)
+- **Voice Guidance** - Spoken nutrition information & health alerts
 - **Accessibility Support** - Screen reader compatible
 - **High Contrast Mode** - Dark mode for better visibility
 
@@ -270,45 +277,33 @@ flutter build ios --release
 
 ```
 lib/
-├── main.dart                          # App entry point & theme
-├── models/
-│   ├── food_entry.dart               # Food entry data model
-│   ├── food_item.dart                # Food database item model
-│   └── user_profile.dart             # User profile data model
-├── screens/
-│   ├── home_screen.dart              # Main dashboard
-│   ├── search_screen.dart            # Food search & scanner
-│   ├── analytics_screen.dart         # Charts and statistics
-│   ├── profile_screen.dart           # User profile & settings
-│   ├── add_food_screen.dart          # Add/edit food entries
-│   ├── edit_profile_screen.dart      # Edit user information
-│   ├── health_conditions_screen.dart # Health tracking setup
-│   ├── food_scanner_screen.dart      # AI food detection
-│   └── ai_insights_screen.dart       # Gemini AI nutrition coach
-├── widgets/
-│   ├── nutrition_ring_chart.dart     # Custom ring chart
-│   ├── meal_section.dart             # Meal display component
-│   ├── water_tracker.dart            # Water intake tracker
-│   ├── skeleton_loader.dart          # Shimmer loading states
-│   ├── animated_progress_ring.dart   # Circular progress with milestones
-│   ├── animated_counter.dart         # Counting number animations
-│   └── empty_state_widget.dart       # Illustrated empty states
-├── services/
-│   ├── export_service.dart           # CSV export functionality
-│   ├── notification_service.dart     # Water reminders & notifications
-│   ├── gemini_service.dart           # Gemini AI integration
-│   ├── food_detector_service.dart    # TensorFlow Lite food detection
-│   ├── food_search_service.dart      # Smart food search
-│   ├── steps_service.dart            # Step counter integration
-│   └── tts_service.dart              # Text-to-speech
-├── utils/
-│   ├── storage_helper.dart           # Unified storage interface
-│   ├── database_helper.dart          # SQLite database manager
-│   ├── secure_storage_helper.dart    # Secure data encryption
-│   ├── food_data_loader.dart         # CSV food database loader
-│   └── health_alert_service.dart     # Health condition monitoring
-└── theme/
-    └── theme_manager.dart            # Theme state management
+├── main.dart                          # App entry point
+├── data/                              # Backend & Business Logic
+│   ├── models/                        # Data Transfer Objects
+│   │   ├── food_entry.dart            # Food entry data model
+│   │   ├── food_item.dart             # Food database item model
+│   │   └── user_profile.dart          # User profile data model
+│   ├── services/                      # Business Services
+│   │   ├── gemini_service.dart        # Gemini AI integration
+│   │   ├── notification_service.dart  # Water reminders & notifications
+│   │   ├── food_detector_service.dart # TensorFlow Lite food detection
+│   │   ├── food_search_service.dart   # Smart food search
+│   │   └── export_service.dart        # CSV export functionality
+│   └── local/                         # Local Data Persistence
+│       ├── database_helper.dart       # SQLite database manager
+│       ├── storage_helper.dart        # Unified storage interface
+│       └── food_data_loader.dart      # CSV food database loader
+└── ui/                                # Frontend Presentation
+    ├── screens/                       # Application Screens
+    │   ├── home_screen.dart           # Main dashboard
+    │   ├── search_screen.dart         # Food search & scanner
+    │   └── analytics_screen.dart      # Charts and statistics
+    ├── widgets/                       # Reusable Components
+    │   ├── nutrition_ring_chart.dart  # Custom ring chart
+    │   ├── water_tracker.dart         # Water intake tracker
+    │   └── skeleton_loader.dart       # Shimmer loading states
+    └── theme/                         # Styling
+        └── theme_manager.dart         # Theme state management
 
 assets/
 ├── Anuvaad_INDB_2024.11.csv         # Indian food database (10,000+ foods)
@@ -339,6 +334,7 @@ assets/
 5. Adjust serving size (e.g., 150g instead of 100g)
 6. Nutrients calculate automatically!
 7. Save - done in seconds! ✨
+8. **Smart Portion Picker**: Use the visual selector (Small/Medium/Large) for instant weight estimation.
 
 ### Using AI Food Scanner
 1. Tap **Search tab** → **Camera icon**
@@ -502,6 +498,12 @@ flutter run --verbose
 ### Barcode Scanner Not Working
 - Grant camera permissions
 - Use manual search instead (web doesn't support scanner)
+
+### Build Failed: "Installed Build Tools revision 35.0.0 is corrupted"
+- Open Android Studio -> SDK Manager -> SDK Tools
+- Uncheck "Android SDK Build-Tools 35.0.0" -> Apply (Uninstall)
+- Check "Android SDK Build-Tools 35.0.0" -> Apply (Reinstall)
+- Or delete the `35.0.0` folder in your Android SDK path manually
 
 ---
 

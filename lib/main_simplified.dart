@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:privacy_first_nutrition_tracking_app/utils/storage_helper.dart';
+import 'package:privacy_first_nutrition_tracking_app/data/local/storage_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

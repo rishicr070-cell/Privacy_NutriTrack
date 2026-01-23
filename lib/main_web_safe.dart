@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:privacy_first_nutrition_tracking_app/screens/home_screen.dart';
-import 'package:privacy_first_nutrition_tracking_app/screens/search_screen.dart';
-import 'package:privacy_first_nutrition_tracking_app/screens/profile_screen.dart';
-import 'package:privacy_first_nutrition_tracking_app/screens/analytics_screen.dart';
-import 'package:privacy_first_nutrition_tracking_app/utils/storage_helper.dart';
+import 'package:privacy_first_nutrition_tracking_app/ui/screens/home_screen.dart';
+import 'package:privacy_first_nutrition_tracking_app/ui/screens/search_screen.dart';
+import 'package:privacy_first_nutrition_tracking_app/ui/screens/profile_screen.dart';
+import 'package:privacy_first_nutrition_tracking_app/ui/screens/analytics_screen.dart';
+import 'package:privacy_first_nutrition_tracking_app/data/local/storage_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

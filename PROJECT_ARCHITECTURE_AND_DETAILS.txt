@@ -1,0 +1,167 @@
+NutriTrack - Project Architecture & Technical Documentation
+
+1. Introduction
+NutriTrack is a cutting-edge, privacy-first nutrition tracking mobile application designed to empower users to take control of their health without compromising their data privacy. Unlike traditional nutrition apps that monetize user data or require cloud synchronization, NutriTrack operates on a "Local-First" principle, ensuring that all personal health data, eating habits, and biometric information remain exclusively on the user's device.
+
+The application combines modern medical science (Mifflin-St Jeor equations for metabolic rate) with advanced Artificial Intelligence (Gemini AI & TensorFlow Lite) to provide a seamless, intelligent, and secure user experience. It is specifically tailored with a massive database of 10,000+ Indian foods, addressing a common gap in Western-centric nutrition trackers.
+
+2. Problem Statement
+In the current digital health landscape, users face three primary challenges:
+1. Privacy Violation: Most popular nutrition apps operate on cloud-based models that aggregate, analyze, and often sell user health data to third parties. Users have lost ownership of their most sensitive biological data.
+2. Cultural Irrelevance: Global nutrition apps often lack comprehensive databases for regional cuisines, particularly Indian food, making calorie tracking inaccurate for millions of users.
+3. Connectivity Dependence: Many apps require an active internet connection for basic functionality like logging meals or searching databases, which disrupts the user experience in low-connectivity zones.
+
+3. Objectives
+The primary objectives of the NutriTrack project are:
+- Privacy Sovereignty: To build an architecture where 100% of user data is stored locally using SQLite and encrypted Secure Storage, with zero mandatory cloud uploads.
+- Contextual Intelligence: To integrate low-latency On-Device ML (TensorFlow Lite) for food recognition and Cloud AI (Gemini) for high-level nutritional coaching, balancing privacy with capability.
+- Regional Accuracy: To curate and implement a high-granularity database of Indian foods (Anuvaad INDB 2024), enabling precise tracking for the target demographic.
+- User Experience (UX) Excellence: To deliver a premium, fluid interface using modern design principles (Material 3, Glassmorphism) that motivates consistent usage through micro-interactions and gamification.
+
+4. Methodology
+
+4.1 System Architecture
+NutriTrack follows a Service-Oriented Architecture (SOA) within a strict MVVM (Model-View-ViewModel) implementation pattern using Flutter's Provider state management.
+
+- Presentation Layer (UI): Screens and reusable widgets that observe state changes.
+- Business Logic Layer (Services/Providers):
+  - ThemeManager: Handles dynamic theming.
+  - GeminiService: Manages AI conversational context, prompts, and multilingual translations.
+  - NotificationService: Handles local scheduling of reminders.
+  - FoodDetectorService: Manages camera input and TFLite inference.
+  - TtsService: Handles text-to-speech for health alerts in multiple languages.
+  - PortionEstimationService: Offline logic for food weight estimation.
+- Data Layer (Repositories):
+  - DatabaseHelper: Raw SQLite interactions.
+  - StorageHelper: Abstraction over SharedPreferences.
+  - SecureStorageHelper: Keychain/Keystore abstraction.
+
+4.2 Data Flow & Privacy Strategy
+- Write Operations: When a user logs a meal, data flows from the UI -> DatabaseHelper -> SQLite (Local File System).
+- Read Operations: Data is lazy-loaded from SQLite via asynchronous futures to ensure UI fluidity (60 FPS).
+- AI Interaction:
+  - Food Detection: Images are processed entirely on-device using TFLite. No image is ever uploaded.
+  - Dietary Insights: Only anonymized, session-specific nutritional aggregates (numbers and food names) are sent to the Gemini API. No PII (Personally Identifiable Information) matches or persistent user IDs are shared.
+  - Smart Translation: Safety alerts are translated on-the-fly using Gemini before being spoken by the TTS engine.
+  - Portion Estimation: Strictly offline using a static local database.
+
+4.3 Database Schema (SQLite)
+The application relies on a normalization-optimized relational database:
+- food_entries Table: Stores logs with columns for id, foodName, calories, macros (protein/fat/carbs), servingSize, and timestamp.
+- user_profile Table: Stores singleton user config including healthConditions, allergies (stored as serialized strings), dailyGoals, and biometrics.
+- water_intake Table: Time-series data for hydration tracking.
+- weight_log Table: Time-series data for weight progression analysis.
+
+5. Tools and Techniques Used
+
+5.1 Core Framework
+- Flutter & Dart (v3.10+): Chosen for high-performance rendering (Skia engine), strong typing, and cross-platform compilation capabilities.
+
+5.2 State Management
+- Provider: Implemented for Dependency Injection (DI) and efficient reactive state propagation, ensuring the "Single Source of Truth" principle.
+
+5.3 Local Persistence
+- sqflite: For complex relational data querying (SQL).
+- flutter_secure_storage: Uses Android Keystore/iOS Keychain to store sensitive keys (though currently used for preferences in this privacy model).
+- shared_preferences: For lightweight flags (e.g., "Is Dark Mode On").
+
+5.4 Artificial Intelligence & Machine Learning
+- Google Generative AI (Gemini):
+  - Model: gemini-1.5-flash (or generally available variant).
+  - Technique: Zero-shot prompting with structured output requirements (JSON) for parsing advice into UI components.
+- TensorFlow Lite (tflite_flutter):
+  - Model: Custom MobileNetV2-based classification model (20 classes).
+  - Technique: Quantized integer-only inference for low memory footprint on mobile devices.
+
+5.5 UI/UX Libraries
+- fl_chart: For rendering GPU-accelerated interactive graphs (LineCharts, PieCharts) without webview overhead.
+- Shimmer: Uses gradient-scanning animations for skeleton loading states, improving perceived performance.
+- Flutter Staggered Animations: Orchestrates complex list entry animations for a polished feel.
+- Lottie/Animations: Used for micro-interactions (like the water tracker fill effect).
+
+6. Prototype Information
+
+The current prototype is a functional Beta Release Candidate (RC1) with the following implemented modules:
+
+6.1 Screens & Features
+1. Dashboard (Home):
+   - Real-time "Nutrient Ring" visualization.
+   - Animated Water Tracker with gesture-based logging.
+   - Meal-by-meal breakdown with "Swipe-to-delete".
+2. Smart Search & Log:
+   - Fuzzy search algorithm searching 10,000+ local CSV entries.
+   - Dynamic portion calculator (adjusting 100g base values to user input).
+   - Barcode Scanner integration.
+3. Analytics Hub:
+   - 7/14/30/90-day trend analysis.
+   - Macro distribution pie charts.
+4. AI Coach:
+   - Gemini-powered chat interface providing actionable critiques of today's eating window (e.g., "You're low on protein, try adding Greek yogurt").
+5. Profile & Settings:
+   - BMR/TDEE Calculator based on user stats.
+   - Dark Mode toggle.
+   - Data Export (CSV) for user sovereignty.
+   - Multilingual Settings: Select from 11 Indian languages for spoken health alerts.
+6. Smart Portion & Scanner:
+   - Visual Portion Selector (Small/Medium/Large) for 20+ detected foods.
+   - Auto-prefill of estimated weight from scanner to log.
+
+6.2 Implementation Details
+- CSV Parsing: Custom FoodDataLoader efficiently parses the 5MB+ food database into memory on app launch without UI jank, using Dart isolates (implied potential optimization) or efficient async streams.
+- Theme Engine: A robust ThemeManager supporting material 3 color, dynamic text scaling, and custom gradient shaders.
+
+7. Technical Deep Dive (Advanced Specifications)
+
+7.1 Search Algorithm Strategy
+The application employs a sophisticated multi-stage search algorithm (found in FoodSearchService) to handle user queries against the local database:
+- Normalization: Input strings are sanitized by removing special characters ("-_()[]") and converting to lowercase.
+- Scoring Heuristics:
+  - Exact Match: Assigned a score of 1.0.
+  - Substring Match: Assigned a score of 0.85 (e.g., "apple" matches "pineapple").
+  - Word-level Intersection: Calculates a Jaccard-like similarity index for multi-word queries.
+  - Fuzzy Matching: Implements a custom Levenshtein Distance algorithm using a dynamic programming matrix to handle typos (e.g., "chiken" -> "chicken").
+- Sorting: Results are strictly ordered by descending similarity score to prioritize relevance.
+
+7.2 Computer Vision Pipeline (TFLite)
+The FoodDetectorService implements a specific pipeline for on-device image classification:
+- Pre-processing:
+  - Center Crop: Images are cropped to a square (min(width, height)) to preserve aspect ratio.
+  - Resize: Efficient bilinear interpolation to model input size (dynamically detected, typically 224x224).
+  - Normalization Strategy: Unlike standard float32 models, this implementation uses a Uint8 Input Tensor (0-255 range). This provides a massive speedup by avoiding float conversions.
+- Inference:
+  - Output: Softmax function applied to raw logits to generate a probability distribution (confidence %).
+  - Classes: 20 specific Indian food classes (e.g., "Aloo_matar", "Biryani", "Dosa") mapped via assets/models/labels.txt.
+
+7.3 Notification Architecture
+- Engine: flutter_local_notifications paired with the timezone package.
+- Android Configuration:
+  - Channel ID: 'water_reminders'
+  - Importance: Importance.high (Heads-up notification).
+  - Priority: Priority.high.
+  - Scheduling Mode: AndroidScheduleMode.exactAllowWhileIdle (Critical for reliable delivery in Doze mode).
+- Logic: The background service calculates 6 discrete wake-up events daily between 08:00 and 20:00, looping based on the user's defined interval (default: 240 mins).
+
+7.4 Data Persistence & Ingestion
+- Database Initializer: Uses Sqflite `openDatabase` with strictly defined schema versioning (current v2).
+- CSV Ingestion:
+  - Parser: Uses `CsvToListConverter` from the `csv` package with `eol: '\n'`.
+  - Aggregation: Sequentially loads and merges 5+ distinct datasets (Anuvaad, Kaggle Groups 1-5, Branded foods) into a unified run-time list.
+
+
+7.5 Multilingual Health Alerts Architecture
+- Pipeline:
+  1. Trigger: A health condition match (e.g., High Sugar for diabetic user).
+  2. Text Generation: Base alert generated in English.
+  3. Translation Check: If user preferred language != English, send to Gemini API.
+  4. Synthesis: `TtsService` synthesizes speech using platform-native engine (Google TTS on Android).
+- Languages: Supports 11 variants including Hindi (hi-IN), Tamil (ta-IN), Telugu (te-IN), etc.
+
+7.6 Offline Portion Estimation
+- Logic: `PortionEstimationService` uses a static hardcoded map of food types to weight properties (Key: 'Dosa' -> {Small: 80g, Medium: 120g, Large: 200g}).
+- Privacy: Zero API calls required. All estimations happen purely in Dart logic.
+- Integration: Seamlessly passes estimated values from `FoodScannerScreen` to `AddFoodScreen` via route arguments.
+
+8. Conclusion
+NutriTrack successfully demonstrates that a Privacy-First approach to digital health is not only viable but superior in building user trust. By leveraging the power of modern mobile hardware for local database management and machine learning, the application removes the reliance on corporate cloud infrastructure.
+
+The architecture effectively decouples the user's sensitive data from the service logic, ensuring that while the advice is AI-generated, the memory of the health journey is exclusively owned by the user. The project stands as a complete, scalable foundation for a commercial-grade health application.
